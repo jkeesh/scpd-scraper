@@ -53,7 +53,6 @@ if __name__ == '__main__':
 	br.set_handle_robots(False)
 	br.open("https://myvideosu.stanford.edu/oce/currentquarter.aspx")
 	assert br.viewing_html()
-
 	br.select_form(name="login")
 	br["username"] = "jkeeshin" #Put your username here
 	br["password"] = getpass()
@@ -61,7 +60,10 @@ if __name__ == '__main__':
 	# Open the course page for the title you're looking for 
 	response = br.submit()
 	response = br.follow_link(text=sys.argv[1])
+        #print response.read()	
 	
+	response = br.follow_link(text="HERE")
+	print response.read()
 	# Build up a list of lectures
 	links = []
 	for link in br.links(text="WMP"):
