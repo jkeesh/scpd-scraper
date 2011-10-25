@@ -35,6 +35,7 @@ called watched.
 def convertToMp4(wmv, mp4):
 	print "Converting ", mp4
 	os.system('HandBrakeCLI -i %s -o %s' % (wmv, mp4))
+	os.system('rm -f %s' % wmv)
 
 def download(work):
 	# work[0] is url, work[1] is wmv, work[2] is mp4
@@ -63,12 +64,14 @@ if __name__ == '__main__':
         #print response.read()	
 	
 	response = br.follow_link(text="HERE")
-	print response.read()
+	#print response.read()
 	# Build up a list of lectures
 	links = []
 	for link in br.links(text="WMP"):
 		links.append(re.search(r"'(.*)'",link.url).group(1))
 
+	link_file = open('links.txt', 'w')
+		
 	# So we download the oldest ones first.
 	links.reverse()
 
@@ -79,10 +82,16 @@ if __name__ == '__main__':
 		soup = BeautifulSoup(response.read())
 		video = soup.find('object', id='WMPlayer')['data']
 		video = re.sub("http","mms",video)		
+		video = video.replace(' ', '%20') # remove spaces, they break urls
 		output_name = re.search(r"[a-z]+[0-9]+[a-z]?/[0-9]+",video).group(0).replace("/","_") #+ ".wmv"
 		output_wmv = output_name + ".wmv"
+		link_file.write(video + '\n')
+		print video
 		output_mp4 = output_name + ".mp4"
 		videos.append((video, output_wmv, output_mp4))
+	
+	
+	link_file.close()
 
 	for video in videos:
 		download(video)
