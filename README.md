@@ -9,9 +9,10 @@ This script is modified from the one by Ben Newhouse [https://github.com/newhous
 
 Unfortunately, there are lots of dependencies to get it up and running
 
-1. Handbrake CLI, for converting to mp4: [http://handbrake.fr/downloads2.php](http://handbrake.fr/downloads2.php)
-2. BeautifulSoup for parsing: [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)
-3. Mechanize for emulating a browser, [http://www.crummy.com/software/BeautifulSoup/](http://wwwsearch.sourceforge.net/mechanize/)
+1. BeautifulSoup for parsing: [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)
+2. Mechanize for emulating a browser, [http://www.crummy.com/software/BeautifulSoup/](http://wwwsearch.sourceforge.net/mechanize/)
+3. mimms for downloading video streams [apt-get install mimms]
+4. (For Apple fanbois) Handbrake CLI, for converting to mp4: [http://handbrake.fr/downloads2.php](http://handbrake.fr/downloads2.php)
 
 To run:
 Change to your username
