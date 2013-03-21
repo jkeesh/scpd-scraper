@@ -58,6 +58,8 @@ def downloadAll(username, courseName):
     # Open the course page for the title you're looking for 
     print "Logging in to myvideosu.stanford.edu..."
     response = br.submit()
+    print "Skipping interstitial page."
+    response = br.follow_link(text='https://myvideosu.stanford.edu')
     print "Logged in, going to course link."
     response = br.follow_link(text=courseName)
         #print response.read()    
