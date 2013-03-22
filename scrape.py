@@ -4,7 +4,7 @@ import os
 import sys
 from getpass import *
 from mechanize import Browser
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 
 """
 
@@ -36,8 +36,8 @@ def convertToMp4(wmv, mp4):
 
 def download(work):
     # work[0] is url, work[1] is wmv, work[2] is mp4
-    if os.path.exists(work[2]) or os.path.exists("watched/"+work[2]):
-        print "Already downloaded", work[2]
+    if os.path.exists(work[1]) or os.path.exists("watched/"+work[1]) or os.path.exists(work[2]) or os.path.exists("watched/"+work[2]):
+        print "Already downloaded", work[1]
         return
 
     print "Starting", work[1]
