@@ -67,6 +67,7 @@ def downloadAllLectures(username, courseName, password):
     print "Logged in, going to course link."
 
     # Build up a list of lectures
+    print '\n=== Starting "' + courseName + '" ==='
     print "Loading video links."
     links = []
     for link in br.links(text="WMP"):
@@ -100,7 +101,6 @@ def downloadAllLectures(username, courseName, password):
 def downloadAllCourses(username, courseNames):
     password = getpass()
     for courseName in courseNames:
-        print "Downloading '" + courseName + "'..."
         downloadAllLectures(username, courseName, password)
 
 if __name__ == '__main__':    
