@@ -34,9 +34,9 @@ def convertToMp4(wmv, mp4):
     os.system('HandBrakeCLI -i %s -o %s' % (wmv, mp4))
     os.system('rm -f %s' % wmv)
 
-def download(work):
+def download(work, courseName):
     # work[0] is url, work[1] is wmv, work[2] is mp4
-    if os.path.exists(work[1]) or os.path.exists("watched/"+work[1]) or os.path.exists(work[2]) or os.path.exists("watched/"+work[2]):
+    if os.path.exists(work[1]) or os.path.exists(courseName + "/" + work[1]) or os.path.exists(courseName + "/" + work[2]) or os.path.exists("watched/"+work[1]) or os.path.exists(work[2]) or os.path.exists("watched/"+work[2]):
         print "Already downloaded", work[1]
         return
 
@@ -45,7 +45,7 @@ def download(work):
     # convertToMp4(work[1], work[2])
     print "Finished", work[1]
     
-def downloadAll(username, courseName):
+def downloadAllLectures(username, courseName, password):
     br = Browser()
     br.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
     br.set_handle_robots(False)
@@ -53,19 +53,20 @@ def downloadAll(username, courseName):
     assert br.viewing_html()
     br.select_form(name="login")
     br["username"] = username
-    br["password"] = getpass()
+    br["password"] = password
 
     # Open the course page for the title you're looking for 
     print "Logging in to myvideosu.stanford.edu..."
     response = br.submit()
+    try:
+        response = br.follow_link(text=courseName)
+    except:
+        print "Login Error: username or password likely malformed"
+        sys.exit(0)
+    #print response.read()    
     print "Logged in, going to course link."
-    response = br.follow_link(text=courseName)
-        #print response.read()    
-    
-    # response = br.follow_link(text="HERE")
-    # print response.read()
-    # Build up a list of lectures
 
+    # Build up a list of lectures
     print "Loading video links."
     links = []
     for link in br.links(text="WMP"):
@@ -92,16 +93,21 @@ def downloadAll(username, courseName):
 
     print "Downloading %d video streams."%(len(videos))
     for video in videos:
-        download(video)
+        download(video, courseName)
 
     print "Done!"
 
+def downloadAllCourses(username, courseNames):
+    password = getpass()
+    for courseName in courseNames:
+        print "Downloading '" + courseName + "'..."
+        downloadAllLectures(username, courseName, password)
 
 if __name__ == '__main__':    
-    if (len(sys.argv) != 3):
-        print "Usage: ./scrape.py [Stanford ID] 'Interactive Computer Graphics'"
+    if (len(sys.argv) < 3):
+        print "Usage: ./scrape.py [Stanford ID] 'Interactive Computer Graphics' 'Programming Abstractions' ..."
     else:
         username = sys.argv[1]
-        courseName = sys.argv[2]
-        downloadAll(username, courseName)
+        courseNames = sys.argv[2:len(sys.argv)]
+        downloadAllCourses(username, courseNames)
 

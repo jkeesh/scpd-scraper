@@ -19,7 +19,7 @@ Change to your username
 When prompted, type your password
 
 Usage: 
-    python scrape.py yourUserName "Interactive Computer Graphics"
+    python scrape.py yourUserName "Interactive Computer Graphics" "Programming Abstractions" ...
 
 
 The way I use it is to keep a folder of videos, and once I have watched them, move them
