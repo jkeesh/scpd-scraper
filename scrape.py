@@ -29,6 +29,13 @@ called watched.
 
 """
 
+
+#Flags
+ALL_FLAG = "--all"
+ORGANIZE_FLAG = "--org"
+MP4_FLAG = "--mp4"
+HELP_FLAG = "--help"
+
 def convertToMp4(wmv, mp4):
     print "Converting ", mp4
     os.system('HandBrakeCLI -i %s -o %s' % (wmv, mp4))
@@ -60,7 +67,7 @@ def assertDirectoryExists(dir):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-def downloadAllLectures(username, courseName, password, shouldOrganize, shouldConvertToMP4):
+def downloadAllLectures(username, courseName, password, downloadSettings):
     br = Browser()
     br.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
     br.set_handle_robots(False)
@@ -111,14 +118,14 @@ def downloadAllLectures(username, courseName, password, shouldOrganize, shouldCo
 
         #specify video name and path for .wmv file type
         output_wmv = output_name + ".wmv"
-        if (shouldOrganize):
+        if (downloadSettings["shouldOrganize"]):
             assertDirectoryExists("./"+courseName)
             output_wmv = "./" + coursePath + "/" + output_wmv
         link_file.write(video + '\n')
 
         #specify video name and path for .mp4 file type
         output_mp4 = output_name + ".mp4"
-        if (shouldOrganize):
+        if (downloadSettings["shouldOrganize"]):
             output_mp4 = coursePath + "/" + output_mp4
         videos.append((video, output_wmv, output_mp4))
 
@@ -127,14 +134,15 @@ def downloadAllLectures(username, courseName, password, shouldOrganize, shouldCo
 
     print "Downloading %d video streams."%(len(videos))
     for video in videos:
-        download(video, courseName, shouldConvertToMP4)
-
+        download(video, courseName, downloadSettings["shouldConvertToMP4"])
+        if downloadSettings["shouldConvertToMP4"]:
+            print "MP4 = YES!!"
     print "Done!"
 
-def downloadAllCourses(username, courseNames, shouldOrganize, shouldConvertToMP4):
+def downloadAllCourses(username, courseNames, downloadSettings):
     password = getpass()
     for courseName in courseNames:
-        downloadAllLectures(username, courseName, password, shouldOrganize, shouldConvertToMP4)
+        downloadAllLectures(username, courseName, password, downloadSettings)
 
 
 def printHelpDocumentation():
@@ -143,36 +151,38 @@ def printHelpDocumentation():
     print "Usage:"
     print "  python scrape.py 'username' '--flag1' ... '--flagN' 'courseName1' 'courseName2' ... 'courseNameN'"
     print "Flags:"
-    print "  --all: downloads all new videos based on names of subdirectories in addition to courses listed"
-    print "  --org: auto-organize downloads into subdirectories titled with the course name"
-    print "  --mp4: converts video to mp4"
+    print "  " +    ALL_FLAG   + ": downloads all new videos based on names of subdirectories in addition to courses listed"
+    print "  " + ORGANIZE_FLAG + ": auto-organize downloads into subdirectories titled with the course name"
+    print "  " +    MP4_FLAG   + ": converts video to mp4"
 
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     if (len(sys.argv) < 2):
-        print "Usage: ./scrape.py [Stanford ID] 'Interactive Computer Graphics' 'Programming Abstractions' ..."
-    elif (sys.argv[1] == "help"):
-        printHelpDocumentation()
+        print "Incorrect usage: please enter 'python scrape.py " + HELP_FLAG + "' for help"
     else:
         username = sys.argv[1]
-        flags = [param for param in sys.argv[2:len(sys.argv)] if param.startswith('--')]
+        flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
         courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
-        shouldOrganize = False
-        shouldConvertToMP4 = False
+        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False}
 
         if (len(flags) != 0):
-            if "--all" in flags:
+            if HELP_FLAG in flags:
+                printHelpDocumentation()
+                sys.exit(0)
+            if ALL_FLAG in flags:
+                print "all in"
                 # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
                 courseNames += [name for name in os.listdir(".") if os.path.isdir(name) and not (name[0] is '.' or name is "watched")]
-                flags.remove("--all")
-            if "--org" in flags:
-                shouldOrganize = True
-                flags.remove("--org")
-            if "--mp4" in flags:
-                shouldConvertToMP4 = True
-                flags.remove("--mp4")
+                flags.remove(ALL_FLAG)
+            if ORGANIZE_FLAG in flags:
+                downloadSettings["shouldOrganize"] = True
+                flags.remove(ORGANIZE_FLAG)
+            if MP4_FLAG in flags:
+                downloadSettings["shouldConvertToMP4"] = True
+                flags.remove(MP4_FLAG)
+
             if not len(flags) is 0:
                 print "following flags undefined and will be ignored: "
                 print flags
-        downloadAllCourses(username, courseNames, shouldOrganize, shouldConvertToMP4)
+        downloadAllCourses(username, courseNames, downloadSettings)
 
