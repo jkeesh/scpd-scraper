@@ -8,33 +8,33 @@ from bs4 import BeautifulSoup
 
 """
 
-This program downloads scpd videos for a given class in the order
-that they happened as a wmv, then converts them to a mp4. Each time 
-the script is run, it will update to download all of the undownloaded
-videos. 
+See README for general documentation:
 
-This script is modified from the one by Ben Newhouse (https://github.com/newhouseb).
+Dependencies: 
+1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)
+2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)
+3. mimms for downloading video streams [sudo apt-get install mimms] or using MacPorts for Mac [http://www.macports.org/](http://www.macports.org/)
+4. (For Apple fanbois who don't want .wmv output) Handbrake CLI, for converting to mp4: [http://handbrake.fr/downloads2.php](http://handbrake.fr/downloads2.php)
 
-Unfortunately, there are lots of dependencies to get it up and running
-1. Handbrake CLI, for converting to mp4: http://handbrake.fr/downloads2.php
-2. BeautifulSoup for parsing: http://www.crummy.com/software/BeautifulSoup/
-3. Mechanize for emulating a browser, http://wwwsearch.sourceforge.net/mechanize/
-
-Usage: python scrape.py [Stanford ID] "Interactive Computer Graphics"
-
-The way I use it is to keep a folder of videos, and once I have watched them, move them
-into a subfolder called watched. So it also wont redowload files that are in a subfolder
-called watched.
-
+Usage: 
+    python scrape.py [yourUserName] [optional flags] "Interactive Computer Graphics" "Programming Abstractions" ...
 
 """
+
+
+#Flags
+ALL_FLAG = "--all"
+ORGANIZE_FLAG = "--org"
+MP4_FLAG = "--mp4"
+HELP_FLAG = "--help"
 
 def convertToMp4(wmv, mp4):
     print "Converting ", mp4
     os.system('HandBrakeCLI -i %s -o %s' % (wmv, mp4))
     os.system('rm -f %s' % wmv)
+    print "Finished mp4 conversion for " + courseName
 
-def download(work, courseName):
+def download(work, courseName, shouldConvertToMP4):
     # work[0] is url, work[1] is wmv, work[2] is mp4
     if os.path.exists(work[1]) or os.path.exists(courseName + "/" + work[1]) or os.path.exists(courseName + "/" + work[2]) or os.path.exists("watched/"+work[1]) or os.path.exists(work[2]) or os.path.exists("watched/"+work[2]):
         print "Already downloaded", work[1]
@@ -42,10 +42,24 @@ def download(work, courseName):
 
     print "Starting", work[1]
     os.system("mimms -c %s %s" % (work[0], work[1]))
-    # convertToMp4(work[1], work[2])
+    if (shouldConvertToMP4):
+        try:
+            convertToMp4(work[1], work[2])
+        except:
+            print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
     print "Finished", work[1]
     
-def downloadAllLectures(username, courseName, password):
+def assertLoginSuccessful(forms):
+    for form in forms:
+        if (form.name == "login"):
+            print "Login Error: username or password likely incorrect"
+            sys.exit(0)
+
+def assertDirectoryExists(dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+def downloadAllLectures(username, courseName, password, downloadSettings):
     br = Browser()
     br.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
     br.set_handle_robots(False)
@@ -58,15 +72,23 @@ def downloadAllLectures(username, courseName, password):
     # Open the course page for the title you're looking for 
     print "Logging in to myvideosu.stanford.edu..."
     response = br.submit()
+
+    # Assert that the login was successful
+    assertLoginSuccessful(br.forms())
+        
+    # Assert Course Exists
     try:
         response = br.follow_link(text=courseName)
     except:
-        print "Login Error: username or password likely malformed"
-        sys.exit(0)
-    #print response.read()    
+        print 'Course Read Error: "'+ courseName + '"" not found'
+        return
+
+
+    # Print response.read()    
     print "Logged in, going to course link."
 
     # Build up a list of lectures
+    print '\n=== Starting "' + courseName + '" ==='
     print "Loading video links."
     links = []
     for link in br.links(text="WMP"):
@@ -84,30 +106,77 @@ def downloadAllLectures(username, courseName, password):
         video = re.sub("http","mms",video)        
         video = video.replace(' ', '%20') # remove spaces, they break urls
         output_name = re.search(r"[a-z]+[0-9]+[a-z]?/[0-9]+",video).group(0).replace("/","_") #+ ".wmv"
+        coursePath = courseName.replace(" ", "\ ") # spaces break command line navigation
+
+        #specify video name and path for .wmv file type
         output_wmv = output_name + ".wmv"
+        if (downloadSettings["shouldOrganize"]):
+            assertDirectoryExists("./"+courseName)
+            output_wmv = "./" + coursePath + "/" + output_wmv
         link_file.write(video + '\n')
-        print video
+
+        #specify video name and path for .mp4 file type
         output_mp4 = output_name + ".mp4"
+        if (downloadSettings["shouldOrganize"]):
+            output_mp4 = coursePath + "/" + output_mp4
         videos.append((video, output_wmv, output_mp4))
+
+        print video
     link_file.close()
 
     print "Downloading %d video streams."%(len(videos))
     for video in videos:
-        download(video, courseName)
-
+        download(video, courseName, downloadSettings["shouldConvertToMP4"])
+        if downloadSettings["shouldConvertToMP4"]:
+            print "MP4 = YES!!"
     print "Done!"
 
-def downloadAllCourses(username, courseNames):
+def downloadAllCourses(username, courseNames, downloadSettings):
     password = getpass()
     for courseName in courseNames:
-        print "Downloading '" + courseName + "'..."
-        downloadAllLectures(username, courseName, password)
+        downloadAllLectures(username, courseName, password, downloadSettings)
 
-if __name__ == '__main__':    
-    if (len(sys.argv) < 3):
-        print "Usage: ./scrape.py [Stanford ID] 'Interactive Computer Graphics' 'Programming Abstractions' ..."
+
+def printHelpDocumentation():
+    print "\n"
+    print "=== SCPD Scrape Help==="
+    print "https://github.com/jkeesh/scpd-scraper"
+    print "Usage:"
+    print "  python scrape.py 'username' '--flag1' ... '--flagN' 'courseName1' 'courseName2' ... 'courseNameN'"
+    print "Flags:"
+    print "  " +    ALL_FLAG   + ": downloads all new videos based on names of subdirectories in addition to courses listed"
+    print "  " + ORGANIZE_FLAG + ": auto-organize downloads into subdirectories titled with the course name"
+    print "  " +    MP4_FLAG   + ": converts video to mp4"
+    print "\n"
+
+
+if __name__ == '__main__':
+    if (len(sys.argv) < 2):
+        print "Incorrect usage: please enter 'python scrape.py " + HELP_FLAG + "' for help"
     else:
         username = sys.argv[1]
-        courseNames = sys.argv[2:len(sys.argv)]
-        downloadAllCourses(username, courseNames)
+        flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
+        courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
+        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False}
+
+        if (len(flags) != 0):
+            if HELP_FLAG in flags:
+                printHelpDocumentation()
+                sys.exit(0)
+            if ALL_FLAG in flags:
+                print "all in"
+                # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
+                courseNames += [name for name in os.listdir(".") if os.path.isdir(name) and not (name[0] is '.' or name is "watched")]
+                flags.remove(ALL_FLAG)
+            if ORGANIZE_FLAG in flags:
+                downloadSettings["shouldOrganize"] = True
+                flags.remove(ORGANIZE_FLAG)
+            if MP4_FLAG in flags:
+                downloadSettings["shouldConvertToMP4"] = True
+                flags.remove(MP4_FLAG)
+
+            if not len(flags) is 0:
+                print "following flags undefined and will be ignored: "
+                print flags
+        downloadAllCourses(username, courseNames, downloadSettings)
 
