@@ -33,8 +33,9 @@ def convertToMp4(wmv, mp4):
     print "Converting ", mp4
     os.system('HandBrakeCLI -i %s -o %s' % (wmv, mp4))
     os.system('rm -f %s' % wmv)
+    print "Finished mp4 conversion for " + courseName
 
-def download(work, courseName):
+def download(work, courseName, shouldConvertToMP4):
     # work[0] is url, work[1] is wmv, work[2] is mp4
     if os.path.exists(work[1]) or os.path.exists(courseName + "/" + work[1]) or os.path.exists(courseName + "/" + work[2]) or os.path.exists("watched/"+work[1]) or os.path.exists(work[2]) or os.path.exists("watched/"+work[2]):
         print "Already downloaded", work[1]
@@ -42,7 +43,11 @@ def download(work, courseName):
 
     print "Starting", work[1]
     os.system("mimms -c %s %s" % (work[0], work[1]))
-    # convertToMp4(work[1], work[2])
+    if (shouldConvertToMP4):
+        try:
+            convertToMp4(work[1], work[2])
+        except:
+            print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
     print "Finished", work[1]
     
 def assertLoginSuccessful(forms):
@@ -51,8 +56,11 @@ def assertLoginSuccessful(forms):
             print "Login Error: username or password likely incorrect"
             sys.exit(0)
 
+def assertDirectoryExists(dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
 
-def downloadAllLectures(username, courseName, password):
+def downloadAllLectures(username, courseName, password, shouldOrganize, shouldConvertToMP4):
     br = Browser()
     br.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
     br.set_handle_robots(False)
@@ -99,23 +107,34 @@ def downloadAllLectures(username, courseName, password):
         video = re.sub("http","mms",video)        
         video = video.replace(' ', '%20') # remove spaces, they break urls
         output_name = re.search(r"[a-z]+[0-9]+[a-z]?/[0-9]+",video).group(0).replace("/","_") #+ ".wmv"
+        coursePath = courseName.replace(" ", "\ ") # spaces break command line navigation
+
+        #specify video name and path for .wmv file type
         output_wmv = output_name + ".wmv"
+        if (shouldOrganize):
+            assertDirectoryExists("./"+courseName)
+            output_wmv = "./" + coursePath + "/" + output_wmv
         link_file.write(video + '\n')
-        print video
+
+        #specify video name and path for .mp4 file type
         output_mp4 = output_name + ".mp4"
+        if (shouldOrganize):
+            output_mp4 = coursePath + "/" + output_mp4
         videos.append((video, output_wmv, output_mp4))
+
+        print video
     link_file.close()
 
     print "Downloading %d video streams."%(len(videos))
     for video in videos:
-        download(video, courseName)
+        download(video, courseName, shouldConvertToMP4)
 
     print "Done!"
 
-def downloadAllCourses(username, courseNames):
+def downloadAllCourses(username, courseNames, shouldOrganize, shouldConvertToMP4):
     password = getpass()
     for courseName in courseNames:
-        downloadAllLectures(username, courseName, password)
+        downloadAllLectures(username, courseName, password, shouldOrganize, shouldConvertToMP4)
 
 
 def printHelpDocumentation():
@@ -126,6 +145,7 @@ def printHelpDocumentation():
     print "Flags:"
     print "  --all: downloads all new videos based on names of subdirectories in addition to courses listed"
     print "  --org: auto-organize downloads into subdirectories titled with the course name"
+    print "  --mp4: converts video to mp4"
 
 
 if __name__ == '__main__': 
@@ -138,6 +158,7 @@ if __name__ == '__main__':
         flags = [param for param in sys.argv[2:len(sys.argv)] if param.startswith('--')]
         courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
         shouldOrganize = False
+        shouldConvertToMP4 = False
 
         if (len(flags) != 0):
             if "--all" in flags:
@@ -145,11 +166,13 @@ if __name__ == '__main__':
                 courseNames += [name for name in os.listdir(".") if os.path.isdir(name) and not (name[0] is '.' or name is "watched")]
                 flags.remove("--all")
             if "--org" in flags:
-                print "org in!!"
                 shouldOrganize = True
                 flags.remove("--org")
+            if "--mp4" in flags:
+                shouldConvertToMP4 = True
+                flags.remove("--mp4")
             if not len(flags) is 0:
                 print "following flags undefined and will be ignored: "
                 print flags
-        downloadAllCourses(username, courseNames)
+        downloadAllCourses(username, courseNames, shouldOrganize, shouldConvertToMP4)
 
