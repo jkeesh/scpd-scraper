@@ -32,10 +32,13 @@ Any of the following flags (besides "--help") can be used in conjunction with li
 give information on usage:
 	--help
 download all new videos from courses held in subdirectories whose names match the courses:
+
 	--all
 organize videos by downloading them to folders whose names match the courses:
+
 	--org
 convert lecture videos to mp4:
+
 	--mp4
 
 #Example Calls
