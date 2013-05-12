@@ -15,6 +15,7 @@ Dependencies:
 2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)
 3. mimms for downloading video streams [sudo apt-get install mimms] or using MacPorts for Mac [http://www.macports.org/](http://www.macports.org/)
 4. (For Apple fanbois who don't want .wmv output) Handbrake CLI, for converting to mp4: [http://handbrake.fr/downloads2.php](http://handbrake.fr/downloads2.php)
+5. (optional- prevents scraper from crashing when notes are being used) html5lib parser for BeautifulSoup http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser
 
 Usage: 
     python scrape.py [yourUserName] [optional flags] "Interactive Computer Graphics" "Programming Abstractions" ...
@@ -81,10 +82,11 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
         response = br.follow_link(text=courseName)
     except:
         print 'Course Read Error: "'+ courseName + '"" not found'
+        print 'If this error is unexpected, try installing the html5lib parser for BeautifulSoup. Pages with Notes stored on them have been known to crash when using an outdated parser'
+        print 'you can find instructions on installing the html5lib at "http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"'
         return
 
-
-    # Print response.read()    
+   
     print "Logged in, going to course link."
 
     # Build up a list of lectures
@@ -100,8 +102,12 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
     print "Found %d links, getting video streams."%(len(links))
     videos = []
     for link in links:
-        response = br.open(link)
-        soup = BeautifulSoup(response.read())
+        try:
+            response = br.open(link)
+            soup = BeautifulSoup(response.read())
+        except:
+            print "Error reading "+ link
+            exit(0)
         video = soup.find('object', id='WMPlayer')['data']
         video = re.sub("http","mms",video)        
         video = video.replace(' ', '%20') # remove spaces, they break urls
