@@ -29,10 +29,11 @@ called watched.
 
 #Flags
 Any of the following flags (besides "--help") can be used in conjunction with listed coursenames
-	--help: gives information on usage
-	--all: downloads all new videos from courses held in subdirectories whose names match the courses
-	--org: organize videos by downloading them to folders whose names match the courses
-	--mp4: convert lecture videos to mp4
+
+1. --help: gives information on usage
+2. --all: downloads all new videos from courses held in subdirectories whose names match the courses
+3. --org: organize videos by downloading them to folders whose names match the courses
+4. --mp4: convert lecture videos to mp4
 
 #Example Calls
 	python scrape.py tupacShakur --all --org --mp4 "Interactive Computer Graphics"
