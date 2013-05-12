@@ -82,10 +82,7 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
         response = br.follow_link(text=courseName)
     except:
         print 'Course Read Error: "'+ courseName + '"" not found'
-        print 'If this error is unexpected, try installing the html5lib parser for BeautifulSoup. Pages with Notes stored on them have been known to crash when using an outdated parser'
-        print 'you can find instructions on installing the html5lib at "http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"'
         return
-
    
     print "Logged in, going to course link."
 
@@ -106,8 +103,12 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
             response = br.open(link)
             soup = BeautifulSoup(response.read())
         except:
+            print '\n'
             print "Error reading "+ link
-            exit(0)
+            print 'If this error is unexpected, try installing the html5lib parser for BeautifulSoup. Pages with Notes stored on them have been known to crash when using an outdated parser'
+            print 'you can find instructions on installing the html5lib at "http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"'
+            print '\n'
+            continue
         video = soup.find('object', id='WMPlayer')['data']
         video = re.sub("http","mms",video)        
         video = video.replace(' ', '%20') # remove spaces, they break urls
