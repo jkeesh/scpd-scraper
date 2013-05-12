@@ -146,14 +146,16 @@ def downloadAllCourses(username, courseNames, downloadSettings):
 
 
 def printHelpDocumentation():
-    print "\n       "
+    print "\n"
     print "=== SCPD Scrape Help==="
+    print "https://github.com/jkeesh/scpd-scraper"
     print "Usage:"
     print "  python scrape.py 'username' '--flag1' ... '--flagN' 'courseName1' 'courseName2' ... 'courseNameN'"
     print "Flags:"
     print "  " +    ALL_FLAG   + ": downloads all new videos based on names of subdirectories in addition to courses listed"
     print "  " + ORGANIZE_FLAG + ": auto-organize downloads into subdirectories titled with the course name"
     print "  " +    MP4_FLAG   + ": converts video to mp4"
+    print "\n"
 
 
 if __name__ == '__main__':

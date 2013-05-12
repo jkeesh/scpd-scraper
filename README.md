@@ -19,9 +19,21 @@ Change to your username
 When prompted, type your password
 
 Usage: 
-    python scrape.py yourUserName "Interactive Computer Graphics" "Programming Abstractions" ...
+    python scrape.py [yourUserName] [optional flags] "Interactive Computer Graphics" "Programming Abstractions" ...
 
 
 The way I use it is to keep a folder of videos, and once I have watched them, move them
-into a subfolder called watched. So it also wont redowload files that are in a subfolder
+into a subfolder called watched. So it also wont redownload files that are in a subfolder
 called watched.
+
+
+#Flags
+Any of the following flags (besides "--help") can be used in conjunction with listed coursenames
+	--help: gives information on usage
+	--all: downloads all new videos from courses held in subdirectories whose names match the courses
+	--org: organize videos by downloading them to folders whose names match the courses
+	--mp4: convert lecture videos to mp4
+
+#Example Calls
+	python scrape.py tupacShakur --all --org --mp4 "Interactive Computer Graphics"
+		will download all videos as detailed by subdirectories as well as all videos in Interactive Computer Graphics and convert them to mp4
