@@ -127,8 +127,6 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
     print "Downloading %d video streams."%(len(videos))
     for video in videos:
         download(video, courseName, downloadSettings["shouldConvertToMP4"])
-        if downloadSettings["shouldConvertToMP4"]:
-            print "MP4 = YES!!"
     print "Done!"
 
 def downloadAllCourses(username, courseNames, downloadSettings):
@@ -164,7 +162,6 @@ if __name__ == '__main__':
                 printHelpDocumentation()
                 sys.exit(0)
             if ALL_FLAG in flags:
-                print "all in"
                 # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
                 courseNames += [name for name in os.listdir(".") if os.path.isdir(name) and not (name[0] is '.' or name is "watched")]
                 flags.remove(ALL_FLAG)
