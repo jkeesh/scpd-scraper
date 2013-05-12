@@ -135,9 +135,10 @@ if __name__ == '__main__':
         printHelpDocumentation()
     else:
         username = sys.argv[1]
-        flags = [param for param in sys.argv[2:len(sys.argv)] if param[0] is '-']
-        courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param[0] is '-']
-        
+        flags = [param for param in sys.argv[2:len(sys.argv)] if param.startswith('--')]
+        courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
+        shouldOrganize = False
+
         if (len(flags) != 0):
             if "--all" in flags:
                 # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
@@ -145,6 +146,7 @@ if __name__ == '__main__':
                 flags.remove("--all")
             if "--org" in flags:
                 print "org in!!"
+                shouldOrganize = True
                 flags.remove("--org")
             if not len(flags) is 0:
                 print "following flags undefined and will be ignored: "
