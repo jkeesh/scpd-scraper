@@ -40,4 +40,5 @@ convert lecture videos to mp4:
 
 #Example Calls
 To download all videos as detailed by subdirectories as well as all videos in Interactive Computer Graphics and convert them to mp4
+
 	python scrape.py tupacShakur --all --org --mp4 "Interactive Computer Graphics"
