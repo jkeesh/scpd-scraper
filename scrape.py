@@ -152,6 +152,12 @@ def printHelpDocumentation():
     print "  " +    ALL_FLAG   + ": downloads all new videos based on names of subdirectories in addition to courses listed"
     print "  " + ORGANIZE_FLAG + ": auto-organize downloads into subdirectories titled with the course name"
     print "  " +    MP4_FLAG   + ": converts video to mp4"
+    print "Dependencies:" 
+    print "  1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)"
+    print "  2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)"
+    print "  3. mimms for downloading video streams [sudo apt-get install mimms] or using MacPorts for Mac [http://www.macports.org/](http://www.macports.org/)"
+    print "  4. (optional- To convert to mp4) Handbrake CLI, for converting to mp4: [http://handbrake.fr/downloads2.php](http://handbrake.fr/downloads2.php)"
+    print "  5. (optional- prevents scraper from crashing when notes are being used) html5lib parser for BeautifulSoup http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"
     print "\n"
 
 
@@ -164,13 +170,14 @@ if __name__ == '__main__':
         courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
         downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False}
 
+        # parse flags
         if (len(flags) != 0):
             if HELP_FLAG in flags:
                 printHelpDocumentation()
                 sys.exit(0)
             if ALL_FLAG in flags:
                 # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
-                courseNames += [name for name in os.listdir(".") if os.path.isdir(name) and not (name[0] is '.' or name is "watched")]
+                courseNames += [dirName for dirName in os.listdir(".") if os.path.isdir(dirName) and not (dirName.startswith('.') or dirName is "watched")]
                 flags.remove(ALL_FLAG)
             if ORGANIZE_FLAG in flags:
                 downloadSettings["shouldOrganize"] = True
@@ -182,5 +189,7 @@ if __name__ == '__main__':
             if not len(flags) is 0:
                 print "following flags undefined and will be ignored: "
                 print flags
+
+
         downloadAllCourses(username, courseNames, downloadSettings)
 
