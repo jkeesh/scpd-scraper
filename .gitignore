@@ -1,5 +1,6 @@
 *.mp4
 *.wmv
+HandBrakeCLI
 *DS_Store
 links.txt
 videos/
