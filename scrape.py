@@ -45,6 +45,13 @@ def download(work, courseName):
     # convertToMp4(work[1], work[2])
     print "Finished", work[1]
     
+def assertLoginSuccessful(forms):
+    for form in forms:
+        if (form.name == "login"):
+            print "Login Error: username or password likely incorrect"
+            sys.exit(0)
+
+
 def downloadAllLectures(username, courseName, password):
     br = Browser()
     br.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
@@ -58,12 +65,19 @@ def downloadAllLectures(username, courseName, password):
     # Open the course page for the title you're looking for 
     print "Logging in to myvideosu.stanford.edu..."
     response = br.submit()
+
+    # Assert that the login was successful
+    assertLoginSuccessful(br.forms())
+        
+    # Assert Course Exists
     try:
         response = br.follow_link(text=courseName)
     except:
-        print "Login Error: username or password likely malformed"
-        sys.exit(0)
-    #print response.read()    
+        print 'Course Read Error: "'+ courseName + '"" not found'
+        return
+
+
+    # Print response.read()    
     print "Logged in, going to course link."
 
     # Build up a list of lectures
@@ -103,11 +117,37 @@ def downloadAllCourses(username, courseNames):
     for courseName in courseNames:
         downloadAllLectures(username, courseName, password)
 
-if __name__ == '__main__':    
-    if (len(sys.argv) < 3):
+
+def printHelpDocumentation():
+    print "\n       "
+    print "=== SCPD Scrape Help==="
+    print "Usage:"
+    print "  python scrape.py 'username' '--flag1' ... '--flagN' 'courseName1' 'courseName2' ... 'courseNameN'"
+    print "Flags:"
+    print "  --all: downloads all new videos based on names of subdirectories in addition to courses listed"
+    print "  --org: auto-organize downloads into subdirectories titled with the course name"
+
+
+if __name__ == '__main__': 
+    if (len(sys.argv) < 2):
         print "Usage: ./scrape.py [Stanford ID] 'Interactive Computer Graphics' 'Programming Abstractions' ..."
+    elif (sys.argv[1] == "help"):
+        printHelpDocumentation()
     else:
         username = sys.argv[1]
-        courseNames = sys.argv[2:len(sys.argv)]
+        flags = [param for param in sys.argv[2:len(sys.argv)] if param[0] is '-']
+        courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param[0] is '-']
+        
+        if (len(flags) != 0):
+            if "--all" in flags:
+                # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
+                courseNames += [name for name in os.listdir(".") if os.path.isdir(name) and not (name[0] is '.' or name is "watched")]
+                flags.remove("--all")
+            if "--org" in flags:
+                print "org in!!"
+                flags.remove("--org")
+            if not len(flags) is 0:
+                print "following flags undefined and will be ignored: "
+                print flags
         downloadAllCourses(username, courseNames)
 
