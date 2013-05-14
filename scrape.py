@@ -171,7 +171,7 @@ if __name__ == '__main__':
         username = sys.argv[1]
         flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
         courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
-        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst" = False}
+        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst": False}
 
         # parse flags
         if (len(flags) != 0):
@@ -190,6 +190,7 @@ if __name__ == '__main__':
                 flags.remove(MP4_FLAG)
             if NEW_FIRST_FLAG in flags:
                 downloadSettings["newestFirst"] = True
+                flags.remove(NEW_FIRST_FLAG)
 
             if not len(flags) is 0:
                 print "following flags undefined and will be ignored: "
