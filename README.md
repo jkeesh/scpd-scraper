@@ -38,6 +38,9 @@ organize videos by downloading them to folders whose names match the courses:
 convert lecture videos to mp4:
 
 	--mp4
+download the newest lectures first:
+
+	--priority=new
 
 #Example Calls
 To download all videos as detailed by subdirectories as well as all videos in Interactive Computer Graphics and Programming Abstractions:

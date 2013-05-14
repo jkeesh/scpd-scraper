@@ -28,6 +28,7 @@ ALL_FLAG = "--all"
 ORGANIZE_FLAG = "--org"
 MP4_FLAG = "--mp4"
 HELP_FLAG = "--help"
+NEW_FIRST_FLAG = "--priority=new"
 
 def convertToMp4(wmv, mp4):
     print "Converting ", mp4
@@ -93,8 +94,9 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
     for link in br.links(text="WMP"):
         links.append(re.search(r"'(.*)'",link.url).group(1))
     link_file = open('links.txt', 'w')
-    # So we download the oldest ones first.
-    links.reverse()
+
+    if not downloadSettings["newestFirst"]:
+        links.reverse() # download the oldest ones first.
 
     print "Found %d links, getting video streams."%(len(links))
     videos = []
@@ -152,6 +154,7 @@ def printHelpDocumentation():
     print "  " +    ALL_FLAG   + ": downloads all new videos based on names of subdirectories in addition to courses listed"
     print "  " + ORGANIZE_FLAG + ": auto-organize downloads into subdirectories titled with the course name"
     print "  " +    MP4_FLAG   + ": converts video to mp4"
+    print "  " +NEW_FIRST_FLAG + ": downloads the newest (most recent) videos first"
     print "Dependencies:" 
     print "  1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)"
     print "  2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)"
@@ -168,7 +171,7 @@ if __name__ == '__main__':
         username = sys.argv[1]
         flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
         courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
-        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False}
+        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst" = False}
 
         # parse flags
         if (len(flags) != 0):
@@ -185,6 +188,8 @@ if __name__ == '__main__':
             if MP4_FLAG in flags:
                 downloadSettings["shouldConvertToMP4"] = True
                 flags.remove(MP4_FLAG)
+            if NEW_FIRST_FLAG in flags:
+                downloadSettings["newestFirst"] = True
 
             if not len(flags) is 0:
                 print "following flags undefined and will be ignored: "
