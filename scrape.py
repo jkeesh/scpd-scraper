@@ -203,7 +203,7 @@ if __name__ == '__main__':
                 location = first[first.find('=')+1:]
                 flags.remove(first)
                 if not os.path.exists(location):
-                    print location + "does not exist"
+                    print location + " does not exist"
                     sys.exit(0)
                 downloadSettings["handbrakeLocation"] = location
 
