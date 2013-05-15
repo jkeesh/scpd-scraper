@@ -57,3 +57,7 @@ To download all videos as detailed by subdirectories as well as all videos in In
 To download a single course to the root directory:
 
 	python scrape.py tupacShakur "Interactive Computer Graphics"
+
+To download all videos, organize, convert to mp4, and use "../HandBrakeCLI" as the location of HandBrakeCLI:
+
+	python scrape.py delgadoj --handbrake=../HandBrakeCLI --org --all --mp4
