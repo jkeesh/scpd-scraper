@@ -29,10 +29,11 @@ ORGANIZE_FLAG = "--org"
 MP4_FLAG = "--mp4"
 HELP_FLAG = "--help"
 NEW_FIRST_FLAG = "--priority=new"
+HANDBRAKE_LOC_FLAG = "--handbrake="
 
-def convertToMp4(wmv, mp4):
+def convertToMp4(wmv, mp4, handbrakeLocation):
     print "Converting ", mp4
-    os.system('HandBrakeCLI -i %s -o %s' % (wmv, mp4))
+    os.system('%s -i %s -o %s' % (handbrakeLocation, wmv, mp4))
     os.system('rm -f %s' % wmv)
     print "Finished mp4 conversion for " + courseName
 
@@ -55,7 +56,7 @@ def download(work, courseName, downloadSettings):
     os.system("mimms -c %s %s" % (work[0], wmvpath))
     if (downloadSettings["shouldConvertToMP4"]):
         try:
-            convertToMp4(wmvpath, mp4path)
+            convertToMp4(wmvpath, mp4path, downloadSettings["handbrakeLocation"])
         except:
             print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
     print "Finished", work[1]
@@ -154,10 +155,11 @@ def printHelpDocumentation():
     print "Usage:"
     print "  python scrape.py 'username' '--flag1' ... '--flagN' 'courseName1' 'courseName2' ... 'courseNameN'"
     print "Flags:"
-    print "  " +    ALL_FLAG   + ": downloads all new videos based on names of subdirectories in addition to courses listed"
-    print "  " + ORGANIZE_FLAG + ": auto-organize downloads into subdirectories titled with the course name"
-    print "  " +    MP4_FLAG   + ": converts video to mp4"
-    print "  " +NEW_FIRST_FLAG + ": downloads the newest (most recent) videos first"
+    print "  " +      ALL_FLAG    + ": downloads all new videos based on names of subdirectories in addition to courses listed"
+    print "  " +   ORGANIZE_FLAG  + ": auto-organize downloads into subdirectories titled with the course name"
+    print "  " +      MP4_FLAG    + ": converts video to mp4"
+    print "  " +  NEW_FIRST_FLAG  + ": downloads the newest (most recent) videos first"
+    print "  " +HANDBRAKE_LOC_FLAG+ ": sets location of HandBrakeCLI executable"
     print "Dependencies:" 
     print "  1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)"
     print "  2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)"
@@ -174,7 +176,7 @@ if __name__ == '__main__':
         username = sys.argv[1]
         flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
         courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
-        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst": False}
+        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst": False, "handbrakeLocation": "HandBrakeCLI"}
 
         # parse flags
         if (len(flags) != 0):
@@ -194,6 +196,16 @@ if __name__ == '__main__':
             if NEW_FIRST_FLAG in flags:
                 downloadSettings["newestFirst"] = True
                 flags.remove(NEW_FIRST_FLAG)
+            #HandBrakeCLI Location
+            handbrakeLoc = [flag for flag in flags if param.startswith(HANDBRAKE_LOC_FLAG)]
+            if not len(handbrakeLoc) is 0:
+                first = handbrakeLoc[0]
+                location = first[first.find('=')+1:]
+                flags.remove(first)
+                if not os.path.exists(location):
+                    print location + "does not exist"
+                    sys.exit(0)
+                downloadSettings["handbrakeLocation"] = location
 
             if not len(flags) is 0:
                 print "following flags undefined and will be ignored: "

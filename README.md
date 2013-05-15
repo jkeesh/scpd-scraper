@@ -41,6 +41,9 @@ convert lecture videos to mp4:
 download the newest lectures first:
 
 	--priority=new
+designate location of HandBrakeCLI:
+
+	--handbrake=[directory]
 
 #Example Calls
 To download all videos as detailed by subdirectories as well as all videos in Interactive Computer Graphics and Programming Abstractions:
