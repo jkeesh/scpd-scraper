@@ -36,17 +36,26 @@ def convertToMp4(wmv, mp4):
     os.system('rm -f %s' % wmv)
     print "Finished mp4 conversion for " + courseName
 
-def download(work, courseName, shouldConvertToMP4):
+def download(work, courseName, downloadSettings):
     # work[0] is url, work[1] is wmv, work[2] is mp4
     if os.path.exists(work[1]) or os.path.exists(courseName + "/" + work[1]) or os.path.exists(courseName + "/" + work[2]) or os.path.exists("watched/"+work[1]) or os.path.exists(work[2]) or os.path.exists("watched/"+work[2]):
         print "Already downloaded", work[1]
         return
 
     print "Starting", work[1]
-    os.system("mimms -c %s %s" % (work[0], work[1]))
-    if (shouldConvertToMP4):
+
+    wmvpath = work[1]
+    mp4path = work[2]
+    if (downloadSettings["shouldOrganize"]):
+        coursePath = courseName.replace(" ", "\ ") # spaces break command line navigation
+        assertDirectoryExists("./"+courseName)
+        wmvpath = "./" + coursePath + "/" + wmvpath
+        mp4path = "./" + coursePath + "/" + mp4path
+
+    os.system("mimms -c %s %s" % (work[0], wmvpath))
+    if (downloadSettings["shouldConvertToMP4"]):
         try:
-            convertToMp4(work[1], work[2])
+            convertToMp4(wmvpath, mp4path)
         except:
             print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
     print "Finished", work[1]
@@ -115,19 +124,13 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
         video = re.sub("http","mms",video)        
         video = video.replace(' ', '%20') # remove spaces, they break urls
         output_name = re.search(r"[a-z]+[0-9]+[a-z]?/[0-9]+",video).group(0).replace("/","_") #+ ".wmv"
-        coursePath = courseName.replace(" ", "\ ") # spaces break command line navigation
 
         #specify video name and path for .wmv file type
         output_wmv = output_name + ".wmv"
-        if (downloadSettings["shouldOrganize"]):
-            assertDirectoryExists("./"+courseName)
-            output_wmv = "./" + coursePath + "/" + output_wmv
         link_file.write(video + '\n')
 
         #specify video name and path for .mp4 file type
         output_mp4 = output_name + ".mp4"
-        if (downloadSettings["shouldOrganize"]):
-            output_mp4 = coursePath + "/" + output_mp4
         videos.append((video, output_wmv, output_mp4))
 
         print video
@@ -135,7 +138,7 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
 
     print "Downloading %d video streams."%(len(videos))
     for video in videos:
-        download(video, courseName, downloadSettings["shouldConvertToMP4"])
+        download(video, courseName, downloadSettings)
     print "Done!"
 
 def downloadAllCourses(username, courseNames, downloadSettings):
