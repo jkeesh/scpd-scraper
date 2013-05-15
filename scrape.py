@@ -197,7 +197,7 @@ if __name__ == '__main__':
                 downloadSettings["newestFirst"] = True
                 flags.remove(NEW_FIRST_FLAG)
             #HandBrakeCLI Location
-            handbrakeLoc = [flag for flag in flags if param.startswith(HANDBRAKE_LOC_FLAG)]
+            handbrakeLoc = [flag for flag in flags if flag.startswith(HANDBRAKE_LOC_FLAG)]
             if not len(handbrakeLoc) is 0:
                 first = handbrakeLoc[0]
                 location = first[first.find('=')+1:]
