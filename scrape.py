@@ -33,9 +33,12 @@ HANDBRAKE_LOC_FLAG = "--handbrake="
 
 def convertToMp4(wmv, mp4, handbrakeLocation):
     print "Converting ", mp4
-    os.system('%s -i %s -o %s' % (handbrakeLocation, wmv, mp4))
-    os.system('rm -f %s' % wmv)
-    print "Finished mp4 conversion for " + courseName
+    try:
+        os.system('%s -i %s -o %s' % (handbrakeLocation, wmv, mp4))
+        os.system('rm -f %s' % wmv)
+        print "Finished mp4 conversion for " + courseName
+    except:
+        print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
 
 def download(work, courseName, downloadSettings):
     # work[0] is url, work[1] is wmv, work[2] is mp4
@@ -55,10 +58,8 @@ def download(work, courseName, downloadSettings):
 
     os.system("mimms -c %s %s" % (work[0], wmvpath))
     if (downloadSettings["shouldConvertToMP4"]):
-        try:
-            convertToMp4(wmvpath, mp4path, downloadSettings["handbrakeLocation"])
-        except:
-            print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
+        convertToMp4(wmvpath, mp4path, downloadSettings["handbrakeLocation"])
+            
     print "Finished", work[1]
     
 def assertLoginSuccessful(forms):
