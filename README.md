@@ -60,4 +60,4 @@ To download a single course to the root directory:
 
 To download all videos, organize, convert to mp4, and use "../HandBrakeCLI" as the location of HandBrakeCLI:
 
-	python scrape.py delgadoj --handbrake=../HandBrakeCLI --org --all --mp4
+	python scrape.py tupacShakur --handbrake=../HandBrakeCLI --org --all --mp4

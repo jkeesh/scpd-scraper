@@ -31,10 +31,10 @@ HELP_FLAG = "--help"
 NEW_FIRST_FLAG = "--priority=new"
 HANDBRAKE_LOC_FLAG = "--handbrake="
 
-def convertToMp4(wmv, mp4, handbrakeLocation):
+def convertToMp4(wmv, mp4, handbrakePath):
     print "Converting ", mp4
     try:
-        os.system('%s -i %s -o %s' % (handbrakeLocation, wmv, mp4))
+        os.system('%s -i %s -o %s' % (handbrakePath, wmv, mp4))
         os.system('rm -f %s' % wmv)
         print "Finished mp4 conversion for " + courseName
     except:
@@ -58,7 +58,7 @@ def download(work, courseName, downloadSettings):
 
     os.system("mimms -c %s %s" % (work[0], wmvpath))
     if (downloadSettings["shouldConvertToMP4"]):
-        convertToMp4(wmvpath, mp4path, downloadSettings["handbrakeLocation"])
+        convertToMp4(wmvpath, mp4path, downloadSettings["handbrakePath"])
             
     print "Finished", work[1]
     
@@ -177,41 +177,32 @@ if __name__ == '__main__':
         username = sys.argv[1]
         flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
         courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
-        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst": False, "handbrakeLocation": "HandBrakeCLI"}
+        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst": False, "handbrakePath": "HandBrakeCLI"}
 
         # parse flags
         if (len(flags) != 0):
-            if HELP_FLAG in flags:
-                printHelpDocumentation()
-                sys.exit(0)
-            if ALL_FLAG in flags:
-                # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
-                courseNames += [dirName for dirName in os.listdir(".") if os.path.isdir(dirName) and not (dirName.startswith('.') or dirName is "watched")]
-                flags.remove(ALL_FLAG)
-            if ORGANIZE_FLAG in flags:
-                downloadSettings["shouldOrganize"] = True
-                flags.remove(ORGANIZE_FLAG)
-            if MP4_FLAG in flags:
-                downloadSettings["shouldConvertToMP4"] = True
-                flags.remove(MP4_FLAG)
-            if NEW_FIRST_FLAG in flags:
-                downloadSettings["newestFirst"] = True
-                flags.remove(NEW_FIRST_FLAG)
-            #HandBrakeCLI Location
-            handbrakeLoc = [flag for flag in flags if flag.startswith(HANDBRAKE_LOC_FLAG)]
-            if not len(handbrakeLoc) is 0:
-                first = handbrakeLoc[0]
-                location = first[first.find('=')+1:]
-                flags.remove(first)
-                if not os.path.exists(location):
-                    print location + " does not exist"
+            for flag in flags:
+                if flag is HELP_FLAG:
+                    printHelpDocumentation()
                     sys.exit(0)
-                downloadSettings["handbrakeLocation"] = location
-
-            if not len(flags) is 0:
-                print "following flags undefined and will be ignored: "
-                print flags
-
+                else if flag is ALL_FLAG:
+                    courseNames += [dirName for dirName in os.listdir(".") if os.path.isdir(dirName) and not (dirName.startswith('.') or dirName is "watched")] # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
+                else if flag is ORGANIZE_FLAG:
+                    downloadSettings["shouldOrganize"] = True
+                else if flag is MP4_FLAG:
+                    downloadSettings["shouldConvertToMP4"] = True
+                else if flag is NEW_FIRST_FLAG:
+                    downloadSettings["newestFirst"] = True
+                else if flag.startswith(HANDBRAKE_LOC_FLAG):
+                    path = flag[flag.find('=')+1]
+                    if not os.path.exists(path);
+                        print path + " does not exist"
+                        sys.exit(0)
+                    downloadSettings["handbrakePath"] = path
+                else:
+                    print flag + "ignored"
+                    continue
+                flags.remove(flag)
 
         downloadAllCourses(username, courseNames, downloadSettings)
 
