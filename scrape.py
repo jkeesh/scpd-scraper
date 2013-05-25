@@ -182,27 +182,26 @@ if __name__ == '__main__':
         # parse flags
         if (len(flags) != 0):
             for flag in flags:
-                if flag is HELP_FLAG:
+                if flag == HELP_FLAG:
                     printHelpDocumentation()
                     sys.exit(0)
-                else if flag is ALL_FLAG:
+                elif flag == ALL_FLAG:
                     courseNames += [dirName for dirName in os.listdir(".") if os.path.isdir(dirName) and not (dirName.startswith('.') or dirName is "watched")] # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
-                else if flag is ORGANIZE_FLAG:
+                elif flag == ORGANIZE_FLAG:
                     downloadSettings["shouldOrganize"] = True
-                else if flag is MP4_FLAG:
+                elif flag == MP4_FLAG:
                     downloadSettings["shouldConvertToMP4"] = True
-                else if flag is NEW_FIRST_FLAG:
+                elif flag == NEW_FIRST_FLAG:
                     downloadSettings["newestFirst"] = True
-                else if flag.startswith(HANDBRAKE_LOC_FLAG):
+                elif flag.startswith(HANDBRAKE_LOC_FLAG):
                     path = flag[flag.find('=')+1]
-                    if not os.path.exists(path);
+                    if not os.path.exists(path):
                         print path + " does not exist"
                         sys.exit(0)
                     downloadSettings["handbrakePath"] = path
                 else:
-                    print flag + "ignored"
+                    print flag + " ignored"
                     continue
-                flags.remove(flag)
 
         downloadAllCourses(username, courseNames, downloadSettings)
 
