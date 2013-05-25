@@ -31,7 +31,7 @@ HELP_FLAG = "--help"
 NEW_FIRST_FLAG = "--priority=new"
 HANDBRAKE_LOC_FLAG = "--handbrake="
 
-def convertToMp4(wmv, mp4, handbrakePath):
+def convertToMp4(wmv, mp4, handbrakePath, courseName):
     print "Converting ", mp4
     try:
         os.system('%s -i %s -o %s' % (handbrakePath, wmv, mp4))
@@ -58,7 +58,7 @@ def download(work, courseName, downloadSettings):
 
     os.system("mimms -c %s %s" % (work[0], wmvpath))
     if (downloadSettings["shouldConvertToMP4"]):
-        convertToMp4(wmvpath, mp4path, downloadSettings["handbrakePath"])
+        convertToMp4(wmvpath, mp4path, downloadSettings["handbrakePath"], courseName)
             
     print "Finished", work[1]
     
