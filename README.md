@@ -44,6 +44,9 @@ download the newest lectures first:
 designate location of HandBrakeCLI:
 
 	--handbrake=[directory]
+designate output location of videos:
+
+	--outputPath=[directory]
 
 #Example Calls
 To download all videos as detailed by subdirectories as well as all videos in Interactive Computer Graphics and Programming Abstractions:
@@ -61,3 +64,7 @@ To download a single course to the root directory:
 To download all videos, organize, convert to mp4, and use "../HandBrakeCLI" as the location of HandBrakeCLI:
 
 	python scrape.py tupacShakur --handbrake=../HandBrakeCLI --org --all --mp4
+
+To download all videos to an different directory:
+
+	python scrape.py tupacShakur --outputPath=/Users/tupacShakur/SCPDvideos/ --all

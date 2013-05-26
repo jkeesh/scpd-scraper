@@ -30,22 +30,25 @@ MP4_FLAG = "--mp4"
 HELP_FLAG = "--help"
 NEW_FIRST_FLAG = "--priority=new"
 HANDBRAKE_LOC_FLAG = "--handbrake="
+OUTPUT_PATH_FLAG = "--outputPath="
 
 def convertToMp4(wmv, mp4, handbrakePath, courseName):
     print "Converting ", mp4
     try:
         os.system('%s -i %s -o %s' % (handbrakePath, wmv, mp4))
-        if (os.path.exists(mp4)):
-            os.system('rm -f %s' % wmv)
-        else:
-            raise
+        os.system('rm -f %s' % wmv)
         print "Finished mp4 conversion for " + courseName
     except:
         print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
 
+def alreadyDownloaded(work, courseName, downloadSettings):
+    wmvExists = os.path.exists(downloadSettings["outputPath"] + work[1]) or os.path.exists(downloadSettings["outputPath"] + courseName + "/" + work[1]) or os.path.exists(downloadSettings["outputPath"] + "watched/"+work[1])
+    mp4Exists = os.path.exists(downloadSettings["outputPath"] + work[2]) or os.path.exists(downloadSettings["outputPath"] + courseName + "/" + work[2]) or os.path.exists(downloadSettings["outputPath"] + "watched/"+work[2])
+    return  wmvExists or mp4Exists
+
 def download(work, courseName, downloadSettings):
     # work[0] is url, work[1] is wmv, work[2] is mp4
-    if os.path.exists(work[1]) or os.path.exists(courseName + "/" + work[1]) or os.path.exists(courseName + "/" + work[2]) or os.path.exists("watched/"+work[1]) or os.path.exists(work[2]) or os.path.exists("watched/"+work[2]):
+    if alreadyDownloaded(work, courseName, downloadSettings):
         print "Already downloaded", work[1]
         return
 
@@ -55,9 +58,12 @@ def download(work, courseName, downloadSettings):
     mp4path = work[2]
     if (downloadSettings["shouldOrganize"]):
         coursePath = courseName.replace(" ", "\ ") # spaces break command line navigation
-        assertDirectoryExists("./"+courseName)
-        wmvpath = "./" + coursePath + "/" + wmvpath
-        mp4path = "./" + coursePath + "/" + mp4path
+        assertDirectoryExists(downloadSettings["outputPath"]+courseName)
+        wmvpath = downloadSettings["outputPath"] + coursePath + "/" + wmvpath
+        mp4path = downloadSettings["outputPath"] + coursePath + "/" + mp4path
+    else:
+        wmvpath = downloadSettings["outputPath"] + wmvpath
+        mp4path = downloadSettings["outputPath"] + mp4path
 
     os.system("mimms -c %s %s" % (work[0], wmvpath))
     if (downloadSettings["shouldConvertToMP4"]):
@@ -164,6 +170,7 @@ def printHelpDocumentation():
     print "  " +      MP4_FLAG    + ": converts video to mp4"
     print "  " +  NEW_FIRST_FLAG  + ": downloads the newest (most recent) videos first"
     print "  " +HANDBRAKE_LOC_FLAG+ ": sets location of HandBrakeCLI executable"
+    print "  " + OUTPUT_PATH_FLAG + ": sets the location where vidoes will be saved"
     print "Dependencies:" 
     print "  1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)"
     print "  2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)"
@@ -180,7 +187,7 @@ if __name__ == '__main__':
         username = sys.argv[1]
         flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
         courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
-        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst": False, "handbrakePath": "HandBrakeCLI"}
+        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst": False, "handbrakePath": "HandBrakeCLI", "outputPath":"./"}
 
         # parse flags
         if (len(flags) != 0):
@@ -198,11 +205,21 @@ if __name__ == '__main__':
                     downloadSettings["newestFirst"] = True
                 elif flag.startswith(HANDBRAKE_LOC_FLAG):
                     path = flag[flag.find('=')+1:]
-                    print path
                     if not os.path.exists(path):
                         print path + " does not exist"
                         sys.exit(0)
                     downloadSettings["handbrakePath"] = path
+                    downloadSettings["shouldConvertToMP4"] = True
+                elif flag.startswith(OUTPUT_PATH_FLAG):
+                    path = flag[flag.find('=')+1:]
+                    if path[-1] != '/':
+                        path = path + '/' #ensure client added '/' so that subdirectories and files can be appended
+                    if not os.path.exists(path):
+                        path = path.replace(" ", "\ ")
+                    if not os.path.exists(path):
+                        print path + " does not exist"
+                        sys.exit(0)
+                    downloadSettings["outputPath"] = path
                 else:
                     print flag + " ignored"
                     continue
