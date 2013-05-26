@@ -35,7 +35,10 @@ def convertToMp4(wmv, mp4, handbrakePath, courseName):
     print "Converting ", mp4
     try:
         os.system('%s -i %s -o %s' % (handbrakePath, wmv, mp4))
-        os.system('rm -f %s' % wmv)
+        if (os.path.exists(mp4)):
+            os.system('rm -f %s' % wmv)
+        else:
+            raise
         print "Finished mp4 conversion for " + courseName
     except:
         print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
@@ -194,7 +197,8 @@ if __name__ == '__main__':
                 elif flag == NEW_FIRST_FLAG:
                     downloadSettings["newestFirst"] = True
                 elif flag.startswith(HANDBRAKE_LOC_FLAG):
-                    path = flag[flag.find('=')+1]
+                    path = flag[flag.find('=')+1:]
+                    print path
                     if not os.path.exists(path):
                         print path + " does not exist"
                         sys.exit(0)
