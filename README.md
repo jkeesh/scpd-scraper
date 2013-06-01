@@ -28,6 +28,7 @@ called watched.
 #Flags
 Any of the following flags (besides "--help") can be used in conjunction with listed coursenames
 give information on usage:
+
 	--help
 download all new videos from courses held in subdirectories whose names match the courses:
 
