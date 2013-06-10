@@ -208,7 +208,7 @@ if __name__ == '__main__':
                     if not os.path.exists(path):
                         print path + " does not exist"
                         sys.exit(0)
-                    downloadSettings["handbrakePath"] = path
+                    downloadSettings["handbrakePath"] = path.replace(" ", "\ ")
                     downloadSettings["shouldConvertToMP4"] = True
                 elif flag.startswith(OUTPUT_PATH_FLAG):
                     path = flag[flag.find('=')+1:]
