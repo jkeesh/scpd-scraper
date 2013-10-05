@@ -32,6 +32,7 @@ NEW_FIRST_FLAG = "--priority=new"
 HANDBRAKE_LOC_FLAG = "--handbrake="
 OUTPUT_PATH_FLAG = "--outputPath="
 
+
 def convertToMp4(wmv, mp4, handbrakePath, courseName):
     print "Converting ", mp4
     try:
@@ -81,6 +82,12 @@ def assertDirectoryExists(dir):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
+def containsFormByName(br, formName):
+    for form in br.forms():
+        if form.name == formName:
+            return True
+    return False
+
 def downloadAllLectures(username, courseName, password, downloadSettings):
     br = Browser()
     br.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
@@ -94,10 +101,20 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
     # Open the course page for the title you're looking for 
     print "Logging in to myvideosu.stanford.edu..."
     response = br.submit()
+    
+
+    # Check for 2 Factor Authentication
+    if (containsFormByName(br, "multifactor_send")):
+        br.select_form(name="multifactor_send")
+        br.submit()
+        br.select_form(name="login")
+        auth_code = raw_input("Please enter 2-Step Authentication code (text): ")
+        br["otp"] = auth_code
+        response = br.submit()
 
     # Assert that the login was successful
     assertLoginSuccessful(br.forms())
-        
+
     # Assert Course Exists
     try:
         response = br.follow_link(text=courseName)
