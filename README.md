@@ -1,4 +1,19 @@
+<hr>
+
+# Warning
+
+We are currently having issues updating the scraper after SCPD changed their website- at this time you can still download videos, just in a more manual fasion.
+What you need to do is get the url of the video and download it with mimms (number 3 in the dependencies list). If you are having trouble with this I created a
+bookmarklet to make it easier. Add the javascript from [this gist](https://gist.github.com/djoeman84/7140185) into your console when you get the the page that plays your video. Note: please click on the WMP version and not the SL version.
+
+Sorry for the delay! We hope to have this up and running as soon as possible!
+
+<br>
+
+<hr>
+
 # SCPD Scraper
+
 
 This program downloads scpd videos for a given class in the order
 that they happened as a wmv, then converts them to a mp4. Each time 
