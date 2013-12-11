@@ -1,4 +1,19 @@
+<hr>
+
+# Warning
+
+We are currently having issues updating the scraper after SCPD changed their website- at this time you can still download videos, just in a more manual fasion.
+What you need to do is get the url of the video and download it with mimms (number 3 in the dependencies list). If you are having trouble with this I created a
+bookmarklet to make it easier. Add the javascript from [this gist](https://gist.github.com/djoeman84/7140185) into your console when you get the the page that plays your video. Note: please click on the WMP version and not the SL version.
+
+Sorry for the delay! We hope to have this up and running as soon as possible!
+
+<br>
+
+<hr>
+
 # SCPD Scraper
+
 
 This program downloads scpd videos for a given class in the order
 that they happened as a wmv, then converts them to a mp4. Each time 
@@ -28,6 +43,7 @@ called watched.
 #Flags
 Any of the following flags (besides "--help") can be used in conjunction with listed coursenames
 give information on usage:
+
 	--help
 download all new videos from courses held in subdirectories whose names match the courses:
 
@@ -41,6 +57,12 @@ convert lecture videos to mp4:
 download the newest lectures first:
 
 	--priority=new
+designate location of HandBrakeCLI:
+
+	--handbrake=[directory]
+designate output location of videos:
+
+	--outputPath=[directory]
 
 #Example Calls
 To download all videos as detailed by subdirectories as well as all videos in Interactive Computer Graphics and Programming Abstractions:
@@ -54,3 +76,11 @@ To download all videos as detailed by subdirectories as well as all videos in In
 To download a single course to the root directory:
 
 	python scrape.py tupacShakur "Interactive Computer Graphics"
+
+To download all videos, organize, convert to mp4, and use "../HandBrakeCLI" as the location of HandBrakeCLI:
+
+	python scrape.py tupacShakur --handbrake=../HandBrakeCLI --org --all --mp4
+
+To download all videos to an different directory:
+
+	python scrape.py tupacShakur --outputPath=/Users/tupacShakur/SCPDvideos/ --all
