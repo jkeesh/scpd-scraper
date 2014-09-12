@@ -92,7 +92,7 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
     br = Browser()
     br.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
     br.set_handle_robots(False)
-    br.open("https://myvideosu.stanford.edu/oce/currentquarter.aspx")
+    br.open("https://myvideosu.stanford.edu")
     assert br.viewing_html()
     br.select_form(name="login")
     br["username"] = username
