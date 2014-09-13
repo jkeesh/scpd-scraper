@@ -20,11 +20,16 @@ Dependencies:
 5. (optional- prevents scraper from crashing when notes are being used) html5lib parser for BeautifulSoup http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser
 
 Usage: 
-    python scrape.py [yourUserName] [optional flags] "Autumn/2014/CS/103" "Autumn/2014/CS/106x" ...
+    python scrape.py [yourUserName] [optional flags] "cs103" "cs106x" ...
 
 """
 
-DOWNLOAD_URL_PREFIX = "https://mvideox.stanford.edu/Graduate#/"
+DOWNLOAD_URL_PREFIX = "https://mvideox.stanford.edu/Graduate#/CourseDetail"
+
+# YOU MUST MODIFY THESE AS APPROPRIATE
+# TODO (far in future) get the current values programmatically
+QUARTER = "Autumn"
+YEAR = "2014"
 
 # Flags
 ALL_FLAG = "--all"
@@ -113,23 +118,26 @@ def containsFormByName(browser, formName):
     """
     return formName in [form.name for form in browser.forms()]
 
-def downloadAllLectures(browser, courseUrl, downloadSettings):
+def downloadAllLectures(driver, courseName, downloadSettings):
     """Download all the lectures for the course with the given url.
 
     Parameters
     ----------
-    browser: Browser
-        the browser to open the web page with
-    courseUrl: str
-        the *full* url of the course page (e.g. https://mvideox.stanford.edu/Graduate#/CourseDetail/Autumn/2014/AA/210A)
+    driver: webdriver
+        the driver to open the web page with
+    courseName: str
+        name of the course
     downloadSettings: dict
         dictionary of settings for the download
 
     """
     # TODO get actual course name
-    courseName = courseUrl
+    courseUrl = getCourseUrl(courseName)
 
-    browser.open(courseUrl)
+    driver.get(courseUrl)
+
+    # TODO remove
+    return
 
     # TODO get correct links
 
@@ -222,14 +230,32 @@ def login(username):
     driver.execute_script(script_text)
 
     # Assert that the login was successful
-    assert driver.find_elements_by_name("login") == 0, "Logged in successfully"
+    # assert driver.find_elements_by_name("login") == 0, "Logged in successfully"
 
     return driver
 
-def downloadAllCourses(username, courseUrls, downloadSettings):
+def getCourseUrl(courseName):
+    """Get the course url from the course name.
+
+    Parameters
+    ----------
+    courseName: str
+        name of the course with format departmentPrefix + courseNumber
+        (e.g. "cs106a")
+
+    Return full course url.
+
+    """
+    import re
+    courseNumberStartIndex = re.search("\d", courseName).start()
+    departmentPrefix = courseName[:courseNumberStartIndex]
+    courseNumber = courseName[courseNumberStartIndex:]
+    return "%s/%s/%s/%s/%s" % (DOWNLOAD_URL_PREFIX, QUARTER, YEAR, departmentPrefix, courseNumber)
+
+def downloadAllCourses(username, courseNames, downloadSettings):
     driver = login(username)
-    # for courseUrl in courseUrls:
-        # downloadAllLectures(browser, DOWNLOAD_URL_PREFIX + courseUrl, downloadSettings)
+    for courseName in courseNames:
+        downloadAllLectures(driver, DOWNLOAD_URL_PREFIX + courseName, downloadSettings)
     driver.quit()
 
 
