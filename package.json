@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "chromedriver": "^2.10.0-1",
     "phantomjs": "^1.9.7-15"
   }
 }

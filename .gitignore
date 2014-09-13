@@ -5,3 +5,5 @@
 links.txt
 videos/
 node_modules/
+chromedriver
+ghostdriver.logs

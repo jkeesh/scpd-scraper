@@ -3,7 +3,10 @@ import re
 import os
 import sys
 import getpass
-from mechanize import Browser
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 
 """
@@ -184,43 +187,50 @@ def login(username):
     username: str
         username of the user to log in
 
-    Return browser with logged in user. We do this so we don't have to do
+    Return webdriver with logged in user. We do this so we don't have to do
     2-step authentication for every new course.
 
     """
     password = getpass.getpass()
 
-    browser = Browser()
-    browser.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
-    browser.set_handle_robots(False)
-    browser.open("https://myvideosu.stanford.edu")
-    assert browser.viewing_html()
-    browser.select_form(name="login")
-    browser["username"] = username
-    browser["password"] = password
+    # driver = webdriver.PhantomJS(executable_path="node_modules/phantomjs/lib/phantom/bin/phantomjs")
+    driver = webdriver.Chrome(executable_path="node_modules/chromedriver/lib/chromedriver/chromedriver")
+    driver.get("https://myvideosu.stanford.edu")
+
+    username_field = driver.find_element_by_name("username")
+    username_field.send_keys(username)
+
+    password_field = driver.find_element_by_name("password")
+    password_field.send_keys(password)
 
     # Open the course page for the title you're looking for 
     print "Logging in to myvideosu.stanford.edu..."
-    response = browser.submit()
+    driver.find_element_by_name("Submit").click()
 
-    # Check for 2 Factor Authentication
-    if containsFormByName(browser, "multifactor_send"):
-        browser.select_form(name="multifactor_send")
-        browser.submit()
-        browser.select_form(name="login")
-        auth_code = raw_input("Please enter 2-Step Authentication code (text): ")
-        browser["otp"] = auth_code
-        response = browser.submit()
+    two_step_button = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.NAME, "send"))
+    )
+    two_step_button.click()
+    two_step_field = driver.find_element_by_name("otp")
+    two_step_code = raw_input("Please enter 2-step authentication code: ")
+    two_step_field.send_keys(two_step_code)
+    driver.find_element_by_name("send").click()
+
+    # This script gives us full access to all videos
+    with open('scpd_full_access.js') as script:
+        script_text = script.read()
+    driver.execute_script(script_text)
 
     # Assert that the login was successful
-    assert not containsFormByName(browser, "login"), "Logged in successfully"
+    assert driver.find_elements_by_name("login") == 0, "Logged in successfully"
 
-    return browser
+    return driver
 
 def downloadAllCourses(username, courseUrls, downloadSettings):
-    browser = login()
-    for courseUrl in courseUrls:
-        downloadAllLectures(browser, DOWNLOAD_URL_PREFIX + courseUrl, downloadSettings)
+    driver = login(username)
+    # for courseUrl in courseUrls:
+        # downloadAllLectures(browser, DOWNLOAD_URL_PREFIX + courseUrl, downloadSettings)
+    driver.quit()
 
 
 def printHelpDocumentation():
