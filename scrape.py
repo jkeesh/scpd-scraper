@@ -2,7 +2,7 @@
 import re
 import os
 import sys
-from getpass import *
+import getpass
 from mechanize import Browser
 from bs4 import BeautifulSoup
 
@@ -14,80 +14,101 @@ Dependencies:
 1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)
 2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)
 3. mimms for downloading video streams [sudo apt-get install mimms] or using MacPorts for Mac [http://www.macports.org/](http://www.macports.org/)
-4. (optional- To convert to mp4) Handbrake CLI, for converting to mp4: [http://handbrake.fr/downloads2.php](http://handbrake.fr/downloads2.php)
 5. (optional- prevents scraper from crashing when notes are being used) html5lib parser for BeautifulSoup http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser
 
 Usage: 
-    python scrape.py [yourUserName] [optional flags] "Interactive Computer Graphics" "Programming Abstractions" ...
+    python scrape.py [yourUserName] [optional flags] "Autumn/2014/CS/103" "Autumn/2014/CS/106x" ...
 
 """
 
 DOWNLOAD_URL_PREFIX = "https://mvideox.stanford.edu/Graduate#/"
 
-#Flags
+# Flags
 ALL_FLAG = "--all"
 ORGANIZE_FLAG = "--org"
-MP4_FLAG = "--mp4"
 HELP_FLAG = "--help"
 NEW_FIRST_FLAG = "--priority=new"
-HANDBRAKE_LOC_FLAG = "--handbrake="
 OUTPUT_PATH_FLAG = "--outputPath="
 
 
-def convertToMp4(wmv, mp4, handbrakePath, courseName):
-    print "Converting ", mp4
-    try:
-        os.system('%s -i %s -o %s' % (handbrakePath, wmv, mp4))
-        os.system('rm -f %s' % wmv)
-        print "Finished mp4 conversion for " + courseName
-    except:
-        print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
+def alreadyDownloaded(fileName, courseName, outputPath):
+    """Check directories for the video to see if it's downloaded already.
 
-def alreadyDownloaded(work, courseName, downloadSettings):
-    wmvExists = os.path.exists(downloadSettings["outputPath"] + work[1]) or os.path.exists(downloadSettings["outputPath"] + courseName + "/" + work[1]) or os.path.exists(downloadSettings["outputPath"] + "watched/"+work[1])
-    mp4Exists = os.path.exists(downloadSettings["outputPath"] + work[2]) or os.path.exists(downloadSettings["outputPath"] + courseName + "/" + work[2]) or os.path.exists(downloadSettings["outputPath"] + "watched/"+work[2])
-    return  wmvExists or mp4Exists
+    Parameters
+    ----------
+    fileName: str
+        file name of the video (not full path, just name like "thevideo.mp4")
+    courseName: str
+        name of the course
+    outputPath: str
+        path to the video download location
 
-def download(work, courseName, downloadSettings):
-    # work[0] is url, work[1] is wmv, work[2] is mp4
-    if alreadyDownloaded(work, courseName, downloadSettings):
-        print "Already downloaded", work[1]
+    Return whether the video with the given file name was downloaded already.
+
+    """
+    directories = [
+        outputPath + fileName,
+        outputPath + courseName + "/" + fileName,
+        outputPath + "watched/" + fileName
+    ]
+    return any(os.path.exists(directory) for directory in directory)
+
+def download(videoUrl, destinationFileName, courseName, downloadSettings):
+    """Download the video with the given url.
+
+    Parameters
+    ----------
+    videoUrl: str
+        url of the video to download
+    destinationFileName: str
+        name of the file to download the video to locally (e.g. "thevideo.mp4")
+    courseName: str
+        name of the course
+    downloadSettings: dict
+        dictionary of settings for the download
+
+    """
+    if alreadyDownloaded(destinationFileName, courseName, downloadSettings["outputPath"]):
+        print "Already downloaded %s" % destinationFileName
         return
 
-    print "Starting", work[1]
+    print "Starting download for %s" % destinationFileName
 
-    wmvpath = work[1]
-    mp4path = work[2]
-    if (downloadSettings["shouldOrganize"]):
+    if downloadSettings["shouldOrganize"]:
         coursePath = courseName.replace(" ", "\ ") # spaces break command line navigation
-        assertDirectoryExists(downloadSettings["outputPath"]+courseName)
-        wmvpath = downloadSettings["outputPath"] + coursePath + "/" + wmvpath
-        mp4path = downloadSettings["outputPath"] + coursePath + "/" + mp4path
+        assertDirectoryExists(downloadSettings["outputPath"] + courseName)
+        destinationFileName = downloadSettings["outputPath"] + coursePath + "/" + destinationFileName
     else:
-        wmvpath = downloadSettings["outputPath"] + wmvpath
-        mp4path = downloadSettings["outputPath"] + mp4path
+        destinationFileName = downloadSettings["outputPath"] + destinationFileName
 
-    os.system("mimms -c %s %s" % (work[0], wmvpath))
-    if (downloadSettings["shouldConvertToMP4"]):
-        convertToMp4(wmvpath, mp4path, downloadSettings["handbrakePath"], courseName)
+    os.system("mimms -c %s %s" % (videoUrl, destinationFileName))
             
-    print "Finished", work[1]
+    print "Finished", destinationFileName
     
-def assertLoginSuccessful(forms):
-    for form in forms:
-        if (form.name == "login"):
-            print "Login Error: username or password likely incorrect"
-            sys.exit(0)
-
 def assertDirectoryExists(dir):
+    """Check if a directory exists. Make one if not.
+
+    Parameters
+    ----------
+    dir: str
+        directory name to check
+
+    """
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-def containsFormByName(br, formName):
-    for form in br.forms():
-        if form.name == formName:
-            return True
-    return False
+def containsFormByName(browser, formName):
+    """Check if the browser's page has a form with the given name.
+
+    Parameters
+    ----------
+    browser: Browser
+        the browser whose page to check
+    formName: str
+        name of the form to check
+
+    """
+    return formName in [form.name for form in browser.forms()]
 
 def downloadAllLectures(browser, courseUrl, downloadSettings):
     """Download all the lectures for the course with the given url.
@@ -102,15 +123,22 @@ def downloadAllLectures(browser, courseUrl, downloadSettings):
         dictionary of settings for the download
 
     """
+    # TODO get actual course name
+    courseName = courseUrl
+
     browser.open(courseUrl)
+
+    # TODO get correct links
 
     # Build up a list of lectures
     print '\n=== Starting "' + courseName + '" ==='
     print "Loading video links."
     links = []
-    for link in br.links(text="WMP"):
+    for link in browser.links(text="WMP"):
         links.append(re.search(r"'(.*)'",link.url).group(1))
     link_file = open('links.txt', 'w')
+
+    # ENDTODO
 
     if not downloadSettings["newestFirst"]:
         links.reverse() # download the oldest ones first.
@@ -119,7 +147,7 @@ def downloadAllLectures(browser, courseUrl, downloadSettings):
     videos = []
     for link in links:
         try:
-            response = br.open(link)
+            response = browser.open(link)
             soup = BeautifulSoup(response.read())
         except:
             print '\n'
@@ -128,25 +156,24 @@ def downloadAllLectures(browser, courseUrl, downloadSettings):
             print 'you can find instructions on installing the html5lib at "http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"'
             print '\n'
             continue
-        video = soup.find('object', id='WMPlayer')['data']
-        video = re.sub("http","mms",video)        
+
+        # TODO get correct info (might already be right, but not sure)
+        video = soup.find('source')['src']
+        video = re.sub("http", "mms", video)
         video = video.replace(' ', '%20') # remove spaces, they break urls
         output_name = re.search(r"[a-z]+[0-9]+[a-z]?/[0-9]+",video).group(0).replace("/","_") #+ ".wmv"
+        # ENDTODO
 
-        #specify video name and path for .wmv file type
-        output_wmv = output_name + ".wmv"
         link_file.write(video + '\n')
 
-        #specify video name and path for .mp4 file type
-        output_mp4 = output_name + ".mp4"
-        videos.append((video, output_wmv, output_mp4))
+        videos.append((video, output_name + ".mp4"))
 
         print video
     link_file.close()
 
     print "Downloading %d video streams."%(len(videos))
     for video in videos:
-        download(video, courseName, downloadSettings)
+        download(video[0], video[1], courseName, downloadSettings)
     print "Done!"
 
 def login(username):
@@ -161,7 +188,7 @@ def login(username):
     2-step authentication for every new course.
 
     """
-    password = getpass()
+    password = getpass.getpass()
 
     browser = Browser()
     browser.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
@@ -177,7 +204,7 @@ def login(username):
     response = browser.submit()
 
     # Check for 2 Factor Authentication
-    if (containsFormByName(browser, "multifactor_send")):
+    if containsFormByName(browser, "multifactor_send"):
         browser.select_form(name="multifactor_send")
         browser.submit()
         browser.select_form(name="login")
@@ -186,7 +213,7 @@ def login(username):
         response = browser.submit()
 
     # Assert that the login was successful
-    assertLoginSuccessful(browser.forms())
+    assert not containsFormByName(browser, "login"), "Logged in successfully"
 
     return browser
 
@@ -205,15 +232,12 @@ def printHelpDocumentation():
     print "Flags:"
     print "  " +      ALL_FLAG    + ": downloads all new videos based on names of subdirectories in addition to courses listed"
     print "  " +   ORGANIZE_FLAG  + ": auto-organize downloads into subdirectories titled with the course name"
-    print "  " +      MP4_FLAG    + ": converts video to mp4"
     print "  " +  NEW_FIRST_FLAG  + ": downloads the newest (most recent) videos first"
-    print "  " +HANDBRAKE_LOC_FLAG+ ": sets location of HandBrakeCLI executable"
     print "  " + OUTPUT_PATH_FLAG + ": sets the location where vidoes will be saved"
     print "Dependencies:" 
     print "  1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)"
     print "  2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)"
     print "  3. mimms for downloading video streams [sudo apt-get install mimms] or using MacPorts for Mac [http://www.macports.org/](http://www.macports.org/)"
-    print "  4. (optional- To convert to mp4) Handbrake CLI, for converting to mp4: [http://handbrake.fr/downloads2.php](http://handbrake.fr/downloads2.php)"
     print "  5. (optional- prevents scraper from crashing when notes are being used) html5lib parser for BeautifulSoup http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"
     print "\n"
 
@@ -225,42 +249,42 @@ if __name__ == '__main__':
         username = sys.argv[1]
         flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
         courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
-        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst": False, "handbrakePath": "HandBrakeCLI", "outputPath":"./"}
+        downloadSettings = {
+            "shouldOrganize": False,
+            "newestFirst": False,
+            "outputPath":"./"
+        }
 
         # parse flags
-        if (len(flags) != 0):
-            for flag in flags:
-                if flag == HELP_FLAG:
-                    printHelpDocumentation()
+        for flag in flags:
+            if flag == HELP_FLAG:
+                printHelpDocumentation()
+                sys.exit(0)
+            elif flag == ALL_FLAG:
+                # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
+                courseNames += [
+                    dirName for dirName in os.listdir(".")
+                    if os.path.isdir(dirName) and not (dirName.startswith('.') or dirName is "watched")
+                ]
+            elif flag == ORGANIZE_FLAG:
+                downloadSettings["shouldOrganize"] = True
+            elif flag == NEW_FIRST_FLAG:
+                downloadSettings["newestFirst"] = True
+            elif flag.startswith(OUTPUT_PATH_FLAG):
+                path = flag[flag.find('=') + 1:]
+                if path[-1] != "/":
+                    # Make sure '/' added at end so that subdirectories and files can be appended
+                    path += "/"
+                if not os.path.exists(path):
+                    # Escape spaces
+                    path = path.replace(" ", "\ ")
+                if not os.path.exists(path):
+                    print path + " does not exist"
                     sys.exit(0)
-                elif flag == ALL_FLAG:
-                    courseNames += [dirName for dirName in os.listdir(".") if os.path.isdir(dirName) and not (dirName.startswith('.') or dirName is "watched")] # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
-                elif flag == ORGANIZE_FLAG:
-                    downloadSettings["shouldOrganize"] = True
-                elif flag == MP4_FLAG:
-                    downloadSettings["shouldConvertToMP4"] = True
-                elif flag == NEW_FIRST_FLAG:
-                    downloadSettings["newestFirst"] = True
-                elif flag.startswith(HANDBRAKE_LOC_FLAG):
-                    path = flag[flag.find('=')+1:]
-                    if not os.path.exists(path):
-                        print path + " does not exist"
-                        sys.exit(0)
-                    downloadSettings["handbrakePath"] = path.replace(" ", "\ ")
-                    downloadSettings["shouldConvertToMP4"] = True
-                elif flag.startswith(OUTPUT_PATH_FLAG):
-                    path = flag[flag.find('=')+1:]
-                    if path[-1] != '/':
-                        path = path + '/' #ensure client added '/' so that subdirectories and files can be appended
-                    if not os.path.exists(path):
-                        path = path.replace(" ", "\ ")
-                    if not os.path.exists(path):
-                        print path + " does not exist"
-                        sys.exit(0)
-                    downloadSettings["outputPath"] = path
-                else:
-                    print flag + " ignored"
-                    continue
+                downloadSettings["outputPath"] = path
+            else:
+                print flag + " ignored"
+                continue
 
         downloadAllCourses(username, courseNames, downloadSettings)
 
