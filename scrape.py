@@ -22,6 +22,7 @@ Usage:
 
 """
 
+DOWNLOAD_URL_PREFIX = "https://mvideox.stanford.edu/Graduate#/"
 
 #Flags
 ALL_FLAG = "--all"
@@ -88,41 +89,20 @@ def containsFormByName(br, formName):
             return True
     return False
 
-def downloadAllLectures(username, courseName, password, downloadSettings):
-    br = Browser()
-    br.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
-    br.set_handle_robots(False)
-    br.open("https://myvideosu.stanford.edu")
-    assert br.viewing_html()
-    br.select_form(name="login")
-    br["username"] = username
-    br["password"] = password
+def downloadAllLectures(browser, courseUrl, downloadSettings):
+    """Download all the lectures for the course with the given url.
 
-    # Open the course page for the title you're looking for 
-    print "Logging in to myvideosu.stanford.edu..."
-    response = br.submit()
-    
+    Parameters
+    ----------
+    browser: Browser
+        the browser to open the web page with
+    courseUrl: str
+        the *full* url of the course page (e.g. https://mvideox.stanford.edu/Graduate#/CourseDetail/Autumn/2014/AA/210A)
+    downloadSettings: dict
+        dictionary of settings for the download
 
-    # Check for 2 Factor Authentication
-    if (containsFormByName(br, "multifactor_send")):
-        br.select_form(name="multifactor_send")
-        br.submit()
-        br.select_form(name="login")
-        auth_code = raw_input("Please enter 2-Step Authentication code (text): ")
-        br["otp"] = auth_code
-        response = br.submit()
-
-    # Assert that the login was successful
-    assertLoginSuccessful(br.forms())
-
-    # Assert Course Exists
-    try:
-        response = br.follow_link(text=courseName)
-    except:
-        print 'Course Read Error: "'+ courseName + '"" not found'
-        return
-   
-    print "Logged in, going to course link."
+    """
+    browser.open(courseUrl)
 
     # Build up a list of lectures
     print '\n=== Starting "' + courseName + '" ==='
@@ -169,10 +149,51 @@ def downloadAllLectures(username, courseName, password, downloadSettings):
         download(video, courseName, downloadSettings)
     print "Done!"
 
-def downloadAllCourses(username, courseNames, downloadSettings):
+def login(username):
+    """Log the user into the Stanford webauth system.
+
+    Parameters
+    ----------
+    username: str
+        username of the user to log in
+
+    Return browser with logged in user. We do this so we don't have to do
+    2-step authentication for every new course.
+
+    """
     password = getpass()
-    for courseName in courseNames:
-        downloadAllLectures(username, courseName, password, downloadSettings)
+
+    browser = Browser()
+    browser.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
+    browser.set_handle_robots(False)
+    browser.open("https://myvideosu.stanford.edu")
+    assert browser.viewing_html()
+    browser.select_form(name="login")
+    browser["username"] = username
+    browser["password"] = password
+
+    # Open the course page for the title you're looking for 
+    print "Logging in to myvideosu.stanford.edu..."
+    response = browser.submit()
+
+    # Check for 2 Factor Authentication
+    if (containsFormByName(browser, "multifactor_send")):
+        browser.select_form(name="multifactor_send")
+        browser.submit()
+        browser.select_form(name="login")
+        auth_code = raw_input("Please enter 2-Step Authentication code (text): ")
+        browser["otp"] = auth_code
+        response = browser.submit()
+
+    # Assert that the login was successful
+    assertLoginSuccessful(browser.forms())
+
+    return browser
+
+def downloadAllCourses(username, courseUrls, downloadSettings):
+    browser = login()
+    for courseUrl in courseUrls:
+        downloadAllLectures(browser, DOWNLOAD_URL_PREFIX + courseUrl, downloadSettings)
 
 
 def printHelpDocumentation():
