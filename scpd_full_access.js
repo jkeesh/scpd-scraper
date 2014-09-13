@@ -8,28 +8,30 @@
    */
   function giveFullAccess() {
     try {
-      // Set our access to FullAccess
       var json = JSON.parse(this.response);
-      json["CourseAccessStatus"] = "FullAccess";
-      json = JSON.stringify(json);
-
-      // `response` and `responseText` are read-only, but this trick lets
-      // us override them. Even though it seems we are creating a property,
-      // `defineProperty` lets us modify existing properties, too.
-      Object.defineProperty(this, "response", {
-        get: function() {
-          return json;
-        }
-      });
-
-      Object.defineProperty(this, "responseText", {
-        get: function() {
-          return json;
-        }
-      });
     } catch(e) {
       // Response was not JSON, so we don't care about it
+      return;
     }
+
+    // Set our access to FullAccess
+    json["CourseAccessStatus"] = "FullAccess";
+    json = JSON.stringify(json);
+
+    // `response` and `responseText` are read-only, but this trick lets
+    // us override them. Even though it seems we are creating a property,
+    // `defineProperty` lets us modify existing properties, too.
+    Object.defineProperty(this, "response", {
+      get: function() {
+        return json;
+      }
+    });
+
+    Object.defineProperty(this, "responseText", {
+      get: function() {
+        return json;
+      }
+    });
   }
 
   /**
