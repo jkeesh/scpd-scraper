@@ -1,4 +1,15 @@
-#!/usr/bin/env python
+"""
+
+Scrapes the SCPD site and downloads lecture videos for the given course.
+
+Note that since the SCPD site update, you must be enrolled in the course to
+successfully download the videos.
+
+Usage:
+    python scrape.py [yourUserName] [optional flags] cs/103 cs/106x
+
+"""
+
 import re
 import os
 import sys
@@ -9,91 +20,76 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 
-"""
-
-See README for general documentation:
-
-Dependencies: 
-1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)
-2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)
-3. mimms for downloading video streams [sudo apt-get install mimms] or using MacPorts for Mac [http://www.macports.org/](http://www.macports.org/)
-5. (optional- prevents scraper from crashing when notes are being used) html5lib parser for BeautifulSoup http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser
-
-Usage: 
-    python scrape.py [yourUserName] [optional flags] "cs103" "cs106x" ...
-
-"""
-
 DOWNLOAD_URL_PREFIX = "https://mvideox.stanford.edu/Graduate#/CourseDetail"
 
 # YOU MUST MODIFY THESE AS APPROPRIATE
-# TODO (far in future) get the current values programmatically
+# TODO get the current values programmatically
 QUARTER = "Autumn"
 YEAR = "2014"
 
 # Flags
 ALL_FLAG = "--all"
-ORGANIZE_FLAG = "--org"
 HELP_FLAG = "--help"
 NEW_FIRST_FLAG = "--priority=new"
 OUTPUT_PATH_FLAG = "--outputPath="
 
 
-def alreadyDownloaded(fileName, courseName, outputPath):
+def already_downloaded(file_name, course_name, output_path):
     """Check directories for the video to see if it's downloaded already.
 
     Parameters
     ----------
-    fileName: str
+    file_name: str
         file name of the video (not full path, just name like "thevideo.mp4")
-    courseName: str
+    course_name: str
         name of the course
-    outputPath: str
+    output_path: str
         path to the video download location
 
     Return whether the video with the given file name was downloaded already.
 
     """
     directories = [
-        outputPath + fileName,
-        outputPath + courseName + "/" + fileName,
-        outputPath + "watched/" + fileName
+        output_path + file_name,
+        course_name + "/" + file_name,
+        output_path + "watched/" + file_name
     ]
-    return any(os.path.exists(directory) for directory in directory)
+    return any(os.path.exists(directory) for directory in directories)
 
-def download(videoUrl, destinationFileName, courseName, downloadSettings):
+def download(video_url, destination_file_name, course_name, download_settings):
     """Download the video with the given url.
 
     Parameters
     ----------
-    videoUrl: str
+    video_url: str
         url of the video to download
-    destinationFileName: str
+    destination_file_name: str
         name of the file to download the video to locally (e.g. "thevideo.mp4")
-    courseName: str
+    course_name: str
         name of the course
-    downloadSettings: dict
+    download_settings: dict
         dictionary of settings for the download
 
     """
-    if alreadyDownloaded(destinationFileName, courseName, downloadSettings["outputPath"]):
-        print "Already downloaded %s" % destinationFileName
+    if already_downloaded(destination_file_name, course_name, download_settings["outputPath"]):
+        print "Already downloaded %s" % destination_file_name
         return
 
-    print "Starting download for %s" % destinationFileName
+    print "Starting download for %s" % destination_file_name
 
-    if downloadSettings["shouldOrganize"]:
-        coursePath = courseName.replace(" ", "\ ") # spaces break command line navigation
-        assertDirectoryExists(downloadSettings["outputPath"] + courseName)
-        destinationFileName = downloadSettings["outputPath"] + coursePath + "/" + destinationFileName
+    # If the user didn't give an output path, output to coursename folder.
+    if download_settings["outputPath"] == "":
+        course_path = course_name.replace(" ", "\ ") # spaces break command line navigation
+        assert_directory_exists(course_name)
+        destination_file_name = course_path + "/" + destination_file_name
     else:
-        destinationFileName = downloadSettings["outputPath"] + destinationFileName
+        destination_file_name = download_settings["outputPath"] + destination_file_name
 
-    os.system("mimms -c %s %s" % (videoUrl, destinationFileName))
-            
-    print "Finished", destinationFileName
-    
-def assertDirectoryExists(dir):
+    os.system("wget -O %s %s" % (destination_file_name, video_url))
+
+    print "Finished", destination_file_name
+
+def assert_directory_exists(dir):
     """Check if a directory exists. Make one if not.
 
     Parameters
@@ -105,7 +101,7 @@ def assertDirectoryExists(dir):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-def containsFormByName(browser, formName):
+def contains_form_by_name(browser, formName):
     """Check if the browser's page has a form with the given name.
 
     Parameters
@@ -118,73 +114,60 @@ def containsFormByName(browser, formName):
     """
     return formName in [form.name for form in browser.forms()]
 
-def downloadAllLectures(driver, courseName, downloadSettings):
+def download_course_lectures(driver, course_name, download_settings):
     """Download all the lectures for the course with the given url.
 
     Parameters
     ----------
     driver: webdriver
         the driver to open the web page with
-    courseName: str
+    course_name: str
         name of the course
-    downloadSettings: dict
+    download_settings: dict
         dictionary of settings for the download
 
     """
-    # TODO get actual course name
-    courseUrl = getCourseUrl(courseName)
+    course_url = get_course_url(course_name)
 
-    driver.get(courseUrl)
-
-    # TODO remove
-    return
-
-    # TODO get correct links
+    driver.get(course_url)
 
     # Build up a list of lectures
-    print '\n=== Starting "' + courseName + '" ==='
+    print '\n=== Starting "' + course_name + '" ==='
     print "Loading video links."
+
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "btn-link"))
+    )
+    anchor_tags = driver.find_elements_by_class_name("btn-link")
+
     links = []
-    for link in browser.links(text="WMP"):
-        links.append(re.search(r"'(.*)'",link.url).group(1))
-    link_file = open('links.txt', 'w')
+    video_ids = [] # Used solely to avoid duplicates
+    for i, anchor_tag in enumerate(anchor_tags):
+        href = anchor_tag.get_attribute("href")
 
-    # ENDTODO
+        # We always want the high quality version of the video.
+        # This seemed to be the easiest way to figure out if it was high or low
+        # quality as looking at the button's text didn't work for some reason.
+        if 'Low' in anchor_tag.get_attribute('ng-click'): continue
+        
+        # Get the id of this video.
+        video_id = re.search("^http://html5b.stanford.edu/videos/courses/cs107/(\d+)-", href).group(1)
+        video_id = int(video_id)
 
-    if not downloadSettings["newestFirst"]:
-        links.reverse() # download the oldest ones first.
+        # If we haven't already seen this video, add it to the list.
+        if video_id not in video_ids:
+            links.append(href)
+            video_ids.append(video_id)
 
-    print "Found %d links, getting video streams."%(len(links))
-    videos = []
-    for link in links:
-        try:
-            response = browser.open(link)
-            soup = BeautifulSoup(response.read())
-        except:
-            print '\n'
-            print "Error reading "+ link
-            print 'If this error is unexpected, try installing the html5lib parser for BeautifulSoup. Pages with Notes stored on them have been known to crash when using an outdated parser'
-            print 'you can find instructions on installing the html5lib at "http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"'
-            print '\n'
-            continue
+    # This relies on the fact that the videos are listed most recent first on the webpage.
+    videos = [(href, "lecture_%d.mp4" % (len(links) - i)) for i, href in enumerate(links)]
 
-        # TODO get correct info (might already be right, but not sure)
-        video = soup.find('source')['src']
-        video = re.sub("http", "mms", video)
-        video = video.replace(' ', '%20') # remove spaces, they break urls
-        output_name = re.search(r"[a-z]+[0-9]+[a-z]?/[0-9]+",video).group(0).replace("/","_") #+ ".wmv"
-        # ENDTODO
+    if not download_settings["newestFirst"]:
+        videos.reverse()
 
-        link_file.write(video + '\n')
-
-        videos.append((video, output_name + ".mp4"))
-
-        print video
-    link_file.close()
-
-    print "Downloading %d video streams."%(len(videos))
+    print "Downloading %d video streams." % len(videos)
     for video in videos:
-        download(video[0], video[1], courseName, downloadSettings)
+        download(video[0], video[1], course_name, download_settings)
     print "Done!"
 
 def login(username):
@@ -201,7 +184,7 @@ def login(username):
     """
     password = getpass.getpass()
 
-    # driver = webdriver.PhantomJS(executable_path="node_modules/phantomjs/lib/phantom/bin/phantomjs")
+    #driver = webdriver.PhantomJS(executable_path="node_modules/phantomjs/lib/phantom/bin/phantomjs")
     driver = webdriver.Chrome(executable_path="node_modules/chromedriver/lib/chromedriver/chromedriver")
     driver.get("https://myvideosu.stanford.edu")
 
@@ -211,7 +194,6 @@ def login(username):
     password_field = driver.find_element_by_name("password")
     password_field.send_keys(password)
 
-    # Open the course page for the title you're looking for 
     print "Logging in to myvideosu.stanford.edu..."
     driver.find_element_by_name("Submit").click()
 
@@ -224,103 +206,100 @@ def login(username):
     two_step_field.send_keys(two_step_code)
     driver.find_element_by_name("send").click()
 
-    # This script gives us full access to all videos
-    with open('scpd_full_access.js') as script:
-        script_text = script.read()
-    driver.execute_script(script_text)
-
-    # Assert that the login was successful
-    # assert driver.find_elements_by_name("login") == 0, "Logged in successfully"
-
     return driver
 
-def getCourseUrl(courseName):
+def get_course_url(course_name):
     """Get the course url from the course name.
 
     Parameters
     ----------
-    courseName: str
+    course_name: str
         name of the course with format departmentPrefix + courseNumber
         (e.g. "cs106a")
 
     Return full course url.
 
     """
-    import re
-    courseNumberStartIndex = re.search("\d", courseName).start()
-    departmentPrefix = courseName[:courseNumberStartIndex]
-    courseNumber = courseName[courseNumberStartIndex:]
-    return "%s/%s/%s/%s/%s" % (DOWNLOAD_URL_PREFIX, QUARTER, YEAR, departmentPrefix, courseNumber)
+    # Add slash between dept prefix and course number for url creation. e.g.
+    #       cs107  --> cs/107
+    #       engr40 --> engr/40
+    first_digit = re.search('\d', course_name).start()
+    course_name = course_name[:first_digit] + '/' + course_name[first_digit:]
+    return "%s/%s/%s/%s" % (DOWNLOAD_URL_PREFIX, QUARTER, YEAR, course_name)
 
-def downloadAllCourses(username, courseNames, downloadSettings):
+def download_all_courses(username, course_names, download_settings):
+    """Download all courses for the given user with the given settings."""
     driver = login(username)
-    for courseName in courseNames:
-        downloadAllLectures(driver, DOWNLOAD_URL_PREFIX + courseName, downloadSettings)
+    for course_name in course_names:
+        download_course_lectures(driver, course_name, download_settings)
     driver.quit()
 
+def parse_flags(flags):
+    """Given a list of command-line flags, return a dictionary of download settings.
 
-def printHelpDocumentation():
+    flags: [str]
+        list of command-line flags
+
+    """
+    download_settings = {
+        "newestFirst": False,
+        "outputPath":""
+    }
+
+    # parse flags
+    for flag in flags:
+        if flag == HELP_FLAG:
+            print_help_documentation()
+            sys.exit(0)
+        elif flag == ALL_FLAG:
+            # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
+            courseNames += [
+                dir_name for dir_name in os.listdir(".")
+                if os.path.isdir(dir_name) and not (dir_name.startswith('.') or dir_name is "watched")
+            ]
+        elif flag == NEW_FIRST_FLAG:
+            download_settings["newestFirst"] = True
+        elif flag.startswith(OUTPUT_PATH_FLAG):
+            path = flag[flag.find('=') + 1:]
+            if path[-1] != "/":
+                # Make sure '/' added at end so that subdirectories and files can be appended
+                path += "/"
+            if not os.path.exists(path):
+                # Escape spaces
+                path = path.replace(" ", "\ ")
+            if not os.path.exists(path):
+                print path + " does not exist"
+                sys.exit(0)
+            download_settings["outputPath"] = path
+        else:
+            print flag + " ignored"
+            continue
+
+    return download_settings
+
+
+def print_help_documentation():
     print "\n"
     print "=== SCPD Scrape Help==="
     print "https://github.com/jkeesh/scpd-scraper"
     print "Usage:"
-    print "  python scrape.py 'username' '--flag1' ... '--flagN' 'courseName1' 'courseName2' ... 'courseNameN'"
+    print "  python scrape.py [username] --flag1 ... --flagN courseName1 courseName2 ... courseNameN"
     print "Flags:"
     print "  " +      ALL_FLAG    + ": downloads all new videos based on names of subdirectories in addition to courses listed"
-    print "  " +   ORGANIZE_FLAG  + ": auto-organize downloads into subdirectories titled with the course name"
     print "  " +  NEW_FIRST_FLAG  + ": downloads the newest (most recent) videos first"
-    print "  " + OUTPUT_PATH_FLAG + ": sets the location where vidoes will be saved"
-    print "Dependencies:" 
-    print "  1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)"
-    print "  2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)"
-    print "  3. mimms for downloading video streams [sudo apt-get install mimms] or using MacPorts for Mac [http://www.macports.org/](http://www.macports.org/)"
-    print "  5. (optional- prevents scraper from crashing when notes are being used) html5lib parser for BeautifulSoup http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"
+    print "  " + OUTPUT_PATH_FLAG + ": sets the location where vidoes will be saved (default to download into course name subdirectories)"
     print "\n"
 
 
 if __name__ == '__main__':
     if (len(sys.argv) < 2):
-        print "Incorrect usage: please enter 'python scrape.py " + HELP_FLAG + "' for help"
+        print "Incorrect usage."
+        print_help_documentation()
     else:
         username = sys.argv[1]
         flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
-        courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
-        downloadSettings = {
-            "shouldOrganize": False,
-            "newestFirst": False,
-            "outputPath":"./"
-        }
+        course_names = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
+        download_settings = parse_flags(flags)
 
-        # parse flags
-        for flag in flags:
-            if flag == HELP_FLAG:
-                printHelpDocumentation()
-                sys.exit(0)
-            elif flag == ALL_FLAG:
-                # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
-                courseNames += [
-                    dirName for dirName in os.listdir(".")
-                    if os.path.isdir(dirName) and not (dirName.startswith('.') or dirName is "watched")
-                ]
-            elif flag == ORGANIZE_FLAG:
-                downloadSettings["shouldOrganize"] = True
-            elif flag == NEW_FIRST_FLAG:
-                downloadSettings["newestFirst"] = True
-            elif flag.startswith(OUTPUT_PATH_FLAG):
-                path = flag[flag.find('=') + 1:]
-                if path[-1] != "/":
-                    # Make sure '/' added at end so that subdirectories and files can be appended
-                    path += "/"
-                if not os.path.exists(path):
-                    # Escape spaces
-                    path = path.replace(" ", "\ ")
-                if not os.path.exists(path):
-                    print path + " does not exist"
-                    sys.exit(0)
-                downloadSettings["outputPath"] = path
-            else:
-                print flag + " ignored"
-                continue
-
-        downloadAllCourses(username, courseNames, downloadSettings)
+        download_all_courses(username, course_names, download_settings)
 
