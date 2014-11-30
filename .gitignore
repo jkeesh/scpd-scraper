@@ -4,3 +4,4 @@
 *.log
 links.txt
 videos/
+node_modules/

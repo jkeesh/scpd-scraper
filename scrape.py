@@ -1,245 +1,305 @@
-#!/usr/bin/env python
+"""
+
+Scrapes the SCPD site and downloads lecture videos for the given course.
+
+Note that since the SCPD site update, you must be enrolled in the course to
+successfully download the videos.
+
+Usage:
+    python scrape.py [yourUserName] [optional flags] cs/103 cs/106x
+
+"""
+
 import re
 import os
 import sys
-from getpass import *
-from mechanize import Browser
+import getpass
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 
-"""
+DOWNLOAD_URL_PREFIX = "https://mvideox.stanford.edu/Graduate#/CourseDetail"
 
-See README for general documentation:
+# YOU MUST MODIFY THESE AS APPROPRIATE
+# TODO get the current values programmatically
+QUARTER = "Autumn"
+YEAR = "2014"
 
-Dependencies: 
-1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)
-2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)
-3. mimms for downloading video streams [sudo apt-get install mimms] or using MacPorts for Mac [http://www.macports.org/](http://www.macports.org/)
-4. (optional- To convert to mp4) Handbrake CLI, for converting to mp4: [http://handbrake.fr/downloads2.php](http://handbrake.fr/downloads2.php)
-5. (optional- prevents scraper from crashing when notes are being used) html5lib parser for BeautifulSoup http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser
-
-Usage: 
-    python scrape.py [yourUserName] [optional flags] "Interactive Computer Graphics" "Programming Abstractions" ...
-
-"""
-
-
-#Flags
+# Flags
 ALL_FLAG = "--all"
-ORGANIZE_FLAG = "--org"
-MP4_FLAG = "--mp4"
 HELP_FLAG = "--help"
 NEW_FIRST_FLAG = "--priority=new"
-HANDBRAKE_LOC_FLAG = "--handbrake="
 OUTPUT_PATH_FLAG = "--outputPath="
 
 
-def convertToMp4(wmv, mp4, handbrakePath, courseName):
-    print "Converting ", mp4
-    try:
-        os.system('%s -i %s -o %s' % (handbrakePath, wmv, mp4))
-        os.system('rm -f %s' % wmv)
-        print "Finished mp4 conversion for " + courseName
-    except:
-        print "MP4 Error: unable to convert " + courseName + " to mp4, you may not have installed HandBrakeCLI"
+def already_downloaded(file_name, course_name, output_path):
+    """Check directories for the video to see if it's downloaded already.
 
-def alreadyDownloaded(work, courseName, downloadSettings):
-    wmvExists = os.path.exists(downloadSettings["outputPath"] + work[1]) or os.path.exists(downloadSettings["outputPath"] + courseName + "/" + work[1]) or os.path.exists(downloadSettings["outputPath"] + "watched/"+work[1])
-    mp4Exists = os.path.exists(downloadSettings["outputPath"] + work[2]) or os.path.exists(downloadSettings["outputPath"] + courseName + "/" + work[2]) or os.path.exists(downloadSettings["outputPath"] + "watched/"+work[2])
-    return  wmvExists or mp4Exists
+    Parameters
+    ----------
+    file_name: str
+        file name of the video (not full path, just name like "thevideo.mp4")
+    course_name: str
+        name of the course
+    output_path: str
+        path to the video download location
 
-def download(work, courseName, downloadSettings):
-    # work[0] is url, work[1] is wmv, work[2] is mp4
-    if alreadyDownloaded(work, courseName, downloadSettings):
-        print "Already downloaded", work[1]
+    Return whether the video with the given file name was downloaded already.
+
+    """
+    directories = [
+        output_path + file_name,
+        course_name + "/" + file_name,
+        output_path + "watched/" + file_name
+    ]
+    return any(os.path.exists(directory) for directory in directories)
+
+def download(video_url, destination_file_name, course_name, download_settings):
+    """Download the video with the given url.
+
+    Parameters
+    ----------
+    video_url: str
+        url of the video to download
+    destination_file_name: str
+        name of the file to download the video to locally (e.g. "thevideo.mp4")
+    course_name: str
+        name of the course
+    download_settings: dict
+        dictionary of settings for the download
+
+    """
+    if already_downloaded(destination_file_name, course_name, download_settings["outputPath"]):
+        print "Already downloaded %s" % destination_file_name
         return
 
-    print "Starting", work[1]
+    print "Starting download for %s" % destination_file_name
 
-    wmvpath = work[1]
-    mp4path = work[2]
-    if (downloadSettings["shouldOrganize"]):
-        coursePath = courseName.replace(" ", "\ ") # spaces break command line navigation
-        assertDirectoryExists(downloadSettings["outputPath"]+courseName)
-        wmvpath = downloadSettings["outputPath"] + coursePath + "/" + wmvpath
-        mp4path = downloadSettings["outputPath"] + coursePath + "/" + mp4path
+    # If the user didn't give an output path, output to coursename folder.
+    if download_settings["outputPath"] == "":
+        course_path = course_name.replace(" ", "\ ") # spaces break command line navigation
+        assert_directory_exists(course_name)
+        destination_file_name = course_path + "/" + destination_file_name
     else:
-        wmvpath = downloadSettings["outputPath"] + wmvpath
-        mp4path = downloadSettings["outputPath"] + mp4path
+        destination_file_name = download_settings["outputPath"] + destination_file_name
 
-    os.system("mimms -c %s %s" % (work[0], wmvpath))
-    if (downloadSettings["shouldConvertToMP4"]):
-        convertToMp4(wmvpath, mp4path, downloadSettings["handbrakePath"], courseName)
-            
-    print "Finished", work[1]
-    
-def assertLoginSuccessful(forms):
-    for form in forms:
-        if (form.name == "login"):
-            print "Login Error: username or password likely incorrect"
-            sys.exit(0)
+    os.system("wget -O %s %s" % (destination_file_name, video_url))
 
-def assertDirectoryExists(dir):
+    print "Finished", destination_file_name
+
+def assert_directory_exists(dir):
+    """Check if a directory exists. Make one if not.
+
+    Parameters
+    ----------
+    dir: str
+        directory name to check
+
+    """
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-def containsFormByName(br, formName):
-    for form in br.forms():
-        if form.name == formName:
-            return True
-    return False
+def contains_form_by_name(browser, formName):
+    """Check if the browser's page has a form with the given name.
 
-def downloadAllLectures(username, courseName, password, downloadSettings):
-    br = Browser()
-    br.addheaders = [('User-agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6; en-us) AppleWebKit/531.9 (KHTML, like Gecko) Version/4.0.3 Safari/531.9')]
-    br.set_handle_robots(False)
-    br.open("https://myvideosu.stanford.edu/oce/currentquarter.aspx")
-    assert br.viewing_html()
-    br.select_form(name="login")
-    br["username"] = username
-    br["password"] = password
+    Parameters
+    ----------
+    browser: Browser
+        the browser whose page to check
+    formName: str
+        name of the form to check
 
-    # Open the course page for the title you're looking for 
-    print "Logging in to myvideosu.stanford.edu..."
-    response = br.submit()
-    
+    """
+    return formName in [form.name for form in browser.forms()]
 
-    # Check for 2 Factor Authentication
-    if (containsFormByName(br, "multifactor_send")):
-        br.select_form(name="multifactor_send")
-        br.submit()
-        br.select_form(name="login")
-        auth_code = raw_input("Please enter 2-Step Authentication code (text): ")
-        br["otp"] = auth_code
-        response = br.submit()
+def download_course_lectures(driver, course_name, download_settings):
+    """Download all the lectures for the course with the given url.
 
-    # Assert that the login was successful
-    assertLoginSuccessful(br.forms())
+    Parameters
+    ----------
+    driver: webdriver
+        the driver to open the web page with
+    course_name: str
+        name of the course
+    download_settings: dict
+        dictionary of settings for the download
 
-    # Assert Course Exists
-    try:
-        response = br.follow_link(text=courseName)
-    except:
-        print 'Course Read Error: "'+ courseName + '"" not found'
-        return
-   
-    print "Logged in, going to course link."
+    """
+    course_url = get_course_url(course_name)
+
+    driver.get(course_url)
 
     # Build up a list of lectures
-    print '\n=== Starting "' + courseName + '" ==='
+    print '\n=== Starting "' + course_name + '" ==='
     print "Loading video links."
+
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "btn-link"))
+    )
+    anchor_tags = driver.find_elements_by_class_name("btn-link")
+
     links = []
-    for link in br.links(text="WMP"):
-        links.append(re.search(r"'(.*)'",link.url).group(1))
-    link_file = open('links.txt', 'w')
+    video_ids = [] # Used solely to avoid duplicates
+    for i, anchor_tag in enumerate(anchor_tags):
+        href = anchor_tag.get_attribute("href")
 
-    if not downloadSettings["newestFirst"]:
-        links.reverse() # download the oldest ones first.
+        # We always want the high quality version of the video.
+        # This seemed to be the easiest way to figure out if it was high or low
+        # quality as looking at the button's text didn't work for some reason.
+        if 'Low' in anchor_tag.get_attribute('ng-click'): continue
+        
+        # Get the id of this video.
+        video_id = re.search("^http://html5b.stanford.edu/videos/courses/cs107/(\d+)-", href).group(1)
+        video_id = int(video_id)
 
-    print "Found %d links, getting video streams."%(len(links))
-    videos = []
-    for link in links:
-        try:
-            response = br.open(link)
-            soup = BeautifulSoup(response.read())
-        except:
-            print '\n'
-            print "Error reading "+ link
-            print 'If this error is unexpected, try installing the html5lib parser for BeautifulSoup. Pages with Notes stored on them have been known to crash when using an outdated parser'
-            print 'you can find instructions on installing the html5lib at "http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"'
-            print '\n'
-            continue
-        video = soup.find('object', id='WMPlayer')['data']
-        video = re.sub("http","mms",video)        
-        video = video.replace(' ', '%20') # remove spaces, they break urls
-        output_name = re.search(r"[a-z]+[0-9]+[a-z]?/[0-9]+",video).group(0).replace("/","_") #+ ".wmv"
+        # If we haven't already seen this video, add it to the list.
+        if video_id not in video_ids:
+            links.append(href)
+            video_ids.append(video_id)
 
-        #specify video name and path for .wmv file type
-        output_wmv = output_name + ".wmv"
-        link_file.write(video + '\n')
+    # This relies on the fact that the videos are listed most recent first on the webpage.
+    videos = [(href, "lecture_%d.mp4" % (len(links) - i)) for i, href in enumerate(links)]
 
-        #specify video name and path for .mp4 file type
-        output_mp4 = output_name + ".mp4"
-        videos.append((video, output_wmv, output_mp4))
+    if not download_settings["newestFirst"]:
+        videos.reverse()
 
-        print video
-    link_file.close()
-
-    print "Downloading %d video streams."%(len(videos))
+    print "Downloading %d video streams." % len(videos)
     for video in videos:
-        download(video, courseName, downloadSettings)
+        download(video[0], video[1], course_name, download_settings)
     print "Done!"
 
-def downloadAllCourses(username, courseNames, downloadSettings):
-    password = getpass()
-    for courseName in courseNames:
-        downloadAllLectures(username, courseName, password, downloadSettings)
+def login(username):
+    """Log the user into the Stanford webauth system.
+
+    Parameters
+    ----------
+    username: str
+        username of the user to log in
+
+    Return webdriver with logged in user. We do this so we don't have to do
+    2-step authentication for every new course.
+
+    """
+    password = getpass.getpass()
+
+    #driver = webdriver.PhantomJS(executable_path="node_modules/phantomjs/lib/phantom/bin/phantomjs")
+    driver = webdriver.Chrome(executable_path="node_modules/chromedriver/lib/chromedriver/chromedriver")
+    driver.get("https://myvideosu.stanford.edu")
+
+    username_field = driver.find_element_by_name("username")
+    username_field.send_keys(username)
+
+    password_field = driver.find_element_by_name("password")
+    password_field.send_keys(password)
+
+    print "Logging in to myvideosu.stanford.edu..."
+    driver.find_element_by_name("Submit").click()
+
+    two_step_button = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.NAME, "send"))
+    )
+    two_step_button.click()
+    two_step_field = driver.find_element_by_name("otp")
+    two_step_code = raw_input("Please enter 2-step authentication code: ")
+    two_step_field.send_keys(two_step_code)
+    driver.find_element_by_name("send").click()
+
+    return driver
+
+def get_course_url(course_name):
+    """Get the course url from the course name.
+
+    Parameters
+    ----------
+    course_name: str
+        name of the course with format departmentPrefix + courseNumber
+        (e.g. "cs106a")
+
+    Return full course url.
+
+    """
+    # Add slash between dept prefix and course number for url creation. e.g.
+    #       cs107  --> cs/107
+    #       engr40 --> engr/40
+    first_digit = re.search('\d', course_name).start()
+    course_name = course_name[:first_digit] + '/' + course_name[first_digit:]
+    return "%s/%s/%s/%s" % (DOWNLOAD_URL_PREFIX, QUARTER, YEAR, course_name)
+
+def download_all_courses(username, course_names, download_settings):
+    """Download all courses for the given user with the given settings."""
+    driver = login(username)
+    for course_name in course_names:
+        download_course_lectures(driver, course_name, download_settings)
+    driver.quit()
+
+def parse_flags(flags):
+    """Given a list of command-line flags, return a dictionary of download settings.
+
+    flags: [str]
+        list of command-line flags
+
+    """
+    download_settings = {
+        "newestFirst": False,
+        "outputPath":""
+    }
+
+    # parse flags
+    for flag in flags:
+        if flag == HELP_FLAG:
+            print_help_documentation()
+            sys.exit(0)
+        elif flag == ALL_FLAG:
+            # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
+            courseNames += [
+                dir_name for dir_name in os.listdir(".")
+                if os.path.isdir(dir_name) and not (dir_name.startswith('.') or dir_name is "watched")
+            ]
+        elif flag == NEW_FIRST_FLAG:
+            download_settings["newestFirst"] = True
+        elif flag.startswith(OUTPUT_PATH_FLAG):
+            path = flag[flag.find('=') + 1:]
+            if path[-1] != "/":
+                # Make sure '/' added at end so that subdirectories and files can be appended
+                path += "/"
+            if not os.path.exists(path):
+                # Escape spaces
+                path = path.replace(" ", "\ ")
+            if not os.path.exists(path):
+                print path + " does not exist"
+                sys.exit(0)
+            download_settings["outputPath"] = path
+        else:
+            print flag + " ignored"
+            continue
+
+    return download_settings
 
 
-def printHelpDocumentation():
+def print_help_documentation():
     print "\n"
     print "=== SCPD Scrape Help==="
     print "https://github.com/jkeesh/scpd-scraper"
     print "Usage:"
-    print "  python scrape.py 'username' '--flag1' ... '--flagN' 'courseName1' 'courseName2' ... 'courseNameN'"
+    print "  python scrape.py [username] --flag1 ... --flagN courseName1 courseName2 ... courseNameN"
     print "Flags:"
     print "  " +      ALL_FLAG    + ": downloads all new videos based on names of subdirectories in addition to courses listed"
-    print "  " +   ORGANIZE_FLAG  + ": auto-organize downloads into subdirectories titled with the course name"
-    print "  " +      MP4_FLAG    + ": converts video to mp4"
     print "  " +  NEW_FIRST_FLAG  + ": downloads the newest (most recent) videos first"
-    print "  " +HANDBRAKE_LOC_FLAG+ ": sets location of HandBrakeCLI executable"
-    print "  " + OUTPUT_PATH_FLAG + ": sets the location where vidoes will be saved"
-    print "Dependencies:" 
-    print "  1. BeautifulSoup for parsing: [sudo easy_install beautifulsoup4] or [http://www.crummy.com/software/BeautifulSoup/](http://www.crummy.com/software/BeautifulSoup/)"
-    print "  2. Mechanize for emulating a browser: [sudo easy_install mechanize] or [http://wwwsearch.sourceforge.net/mechanize/](http://wwwsearch.sourceforge.net/mechanize/)"
-    print "  3. mimms for downloading video streams [sudo apt-get install mimms] or using MacPorts for Mac [http://www.macports.org/](http://www.macports.org/)"
-    print "  4. (optional- To convert to mp4) Handbrake CLI, for converting to mp4: [http://handbrake.fr/downloads2.php](http://handbrake.fr/downloads2.php)"
-    print "  5. (optional- prevents scraper from crashing when notes are being used) html5lib parser for BeautifulSoup http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser"
+    print "  " + OUTPUT_PATH_FLAG + ": sets the location where vidoes will be saved (default to download into course name subdirectories)"
     print "\n"
 
 
 if __name__ == '__main__':
     if (len(sys.argv) < 2):
-        print "Incorrect usage: please enter 'python scrape.py " + HELP_FLAG + "' for help"
+        print "Incorrect usage."
+        print_help_documentation()
     else:
         username = sys.argv[1]
         flags = [param for param in sys.argv[1:len(sys.argv)] if param.startswith('--')]
-        courseNames = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
-        downloadSettings = {"shouldOrganize": False, "shouldConvertToMP4": False, "newestFirst": False, "handbrakePath": "HandBrakeCLI", "outputPath":"./"}
+        course_names = [param for param in sys.argv[2:len(sys.argv)] if not param.startswith('--')]
+        download_settings = parse_flags(flags)
 
-        # parse flags
-        if (len(flags) != 0):
-            for flag in flags:
-                if flag == HELP_FLAG:
-                    printHelpDocumentation()
-                    sys.exit(0)
-                elif flag == ALL_FLAG:
-                    courseNames += [dirName for dirName in os.listdir(".") if os.path.isdir(dirName) and not (dirName.startswith('.') or dirName is "watched")] # Append names of subdirectories (excluding hidden folders and 'watched') to courseNames list
-                elif flag == ORGANIZE_FLAG:
-                    downloadSettings["shouldOrganize"] = True
-                elif flag == MP4_FLAG:
-                    downloadSettings["shouldConvertToMP4"] = True
-                elif flag == NEW_FIRST_FLAG:
-                    downloadSettings["newestFirst"] = True
-                elif flag.startswith(HANDBRAKE_LOC_FLAG):
-                    path = flag[flag.find('=')+1:]
-                    if not os.path.exists(path):
-                        print path + " does not exist"
-                        sys.exit(0)
-                    downloadSettings["handbrakePath"] = path.replace(" ", "\ ")
-                    downloadSettings["shouldConvertToMP4"] = True
-                elif flag.startswith(OUTPUT_PATH_FLAG):
-                    path = flag[flag.find('=')+1:]
-                    if path[-1] != '/':
-                        path = path + '/' #ensure client added '/' so that subdirectories and files can be appended
-                    if not os.path.exists(path):
-                        path = path.replace(" ", "\ ")
-                    if not os.path.exists(path):
-                        print path + " does not exist"
-                        sys.exit(0)
-                    downloadSettings["outputPath"] = path
-                else:
-                    print flag + " ignored"
-                    continue
-
-        downloadAllCourses(username, courseNames, downloadSettings)
+        download_all_courses(username, course_names, download_settings)
 
